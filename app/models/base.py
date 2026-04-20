@@ -1,6 +1,6 @@
 """Declarative base y mixins para modelos."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import as_declarative, declared_attr
 from sqlalchemy import Column, DateTime
 
@@ -15,5 +15,9 @@ class Base:
 
 
 class TimestampMixin:
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )

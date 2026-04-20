@@ -1,15 +1,12 @@
 """FastAPI application entry point."""
-
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from app.api.v1.auth import router as auth_router
 
-app = FastAPI(title="Cinepacho Backend")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
 
+app = FastAPI(title="Cinepacho Backend", lifespan=lifespan)
 
-@app.on_event("startup")
-async def startup_event():
-    pass
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    pass
+app.include_router(auth_router, prefix="/api/v1", tags=["auth"])

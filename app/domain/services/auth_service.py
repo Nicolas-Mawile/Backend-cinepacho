@@ -1,5 +1,5 @@
 """Auth domain service."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from jose import jwt
 from passlib.context import CryptContext
 from app.config import settings
@@ -9,7 +9,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def crear_token(data: dict, expires_delta: timedelta) -> str:
     to_encode = data.copy()
-    to_encode["exp"] = datetime.utcnow() + expires_delta
+    to_encode["exp"] = datetime.now(timezone.utc) + expires_delta
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 async def authenticate_user(correo: str, password: str, repo: ClienteRepository):
@@ -19,8 +19,11 @@ async def authenticate_user(correo: str, password: str, repo: ClienteRepository)
         return None, "credenciales_invalidas"
 
     if await repo.esta_bloqueado(cliente):
+        ultimo_intento = cliente.ultimo_intento
+        if ultimo_intento and ultimo_intento.tzinfo is None:
+            ultimo_intento = ultimo_intento.replace(tzinfo=timezone.utc)
         tiempo_restante = 15 - int(
-            (datetime.utcnow() - cliente.ultimo_intento).seconds / 60
+            (datetime.now(timezone.utc) - ultimo_intento).seconds / 60
         )
         return None, f"bloqueado:{tiempo_restante}"
 

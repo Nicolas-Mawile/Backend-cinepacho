@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     secret_key: str = "supersecretkey_cambiar_despues_idk"
     algorithm: str = "HS256"
 
-    class Config:
+    class ConfigDict:
         env_file = ".env"
 
 settings = Settings()

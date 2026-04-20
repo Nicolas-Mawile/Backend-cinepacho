@@ -1,5 +1,5 @@
 """Cliente repository."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.cliente import Cliente
@@ -16,18 +16,21 @@ class ClienteRepository:
 
     async def incrementar_intentos(self, cliente: Cliente) -> None:
         cliente.intentos_fallidos += 1
-        cliente.ultimo_intento = datetime.utcnow()
+        cliente.ultimo_intento = datetime.now(timezone.utc)
         await self.session.commit()
 
     async def reset_intentos(self, cliente: Cliente) -> None:
         cliente.intentos_fallidos = 0
         cliente.ultimo_intento = None
-        cliente.ultimo_login = datetime.utcnow()
+        cliente.ultimo_login = datetime.now(timezone.utc)
         await self.session.commit()
 
     async def esta_bloqueado(self, cliente: Cliente) -> bool:
         if cliente.intentos_fallidos >= 5 and cliente.ultimo_intento:
-            tiempo_transcurrido = datetime.utcnow() - cliente.ultimo_intento
+            ultimo_intento = cliente.ultimo_intento
+            if ultimo_intento.tzinfo is None:
+                ultimo_intento = ultimo_intento.replace(tzinfo=timezone.utc)
+            tiempo_transcurrido = datetime.now(timezone.utc) - ultimo_intento
             if tiempo_transcurrido < timedelta(minutes=15):
                 return True
         return False
