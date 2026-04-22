@@ -4,6 +4,7 @@ from jose import jwt
 from passlib.context import CryptContext
 from app.config import settings
 from app.infrastructure.repositories.cliente_repository import ClienteRepository
+from app.infrastructure.repositories.refresh_token_repository import RefreshTokenRepository
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -12,7 +13,7 @@ def crear_token(data: dict, expires_delta: timedelta) -> str:
     to_encode["exp"] = datetime.now(timezone.utc) + expires_delta
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
-async def authenticate_user(correo: str, password: str, repo: ClienteRepository):
+async def authenticate_user(correo: str, password: str, repo: ClienteRepository, rt_repo: RefreshTokenRepository = None):
     cliente = await repo.buscar_por_correo(correo)
     if not cliente:
         return None, "credenciales_invalidas"
@@ -34,12 +35,22 @@ async def authenticate_user(correo: str, password: str, repo: ClienteRepository)
         return None, "credenciales_invalidas"
 
     await repo.reset_intentos(correo)
+
+    refresh_expires = timedelta(days=7)
     access_token = crear_token(
         {"sub": str(cliente.id), "tipo": "access", "kind": "cliente"},
         timedelta(hours=24)
     )
     refresh_token = crear_token(
         {"sub": str(cliente.id), "tipo": "refresh", "kind": "cliente"},
-        timedelta(days=7)
+        refresh_expires
     )
+
+    if rt_repo:
+        await rt_repo.guardar(
+            cliente_id=cliente.id,
+            token=refresh_token,
+            expires_at=datetime.now(timezone.utc) + refresh_expires
+        )
+
     return {"access_token": access_token, "refresh_token": refresh_token}, None
