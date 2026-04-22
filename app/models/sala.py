@@ -15,12 +15,11 @@ class Sala(Base):
 
     nombre = Column(String, nullable=False)
 
-    # relación con multiplex
-    multiplex_id = Column(String, ForeignKey("multiplex.id"), nullable=False)
-
     capacidad_general = Column(Integer, default=40)
     capacidad_preferencial = Column(Integer, default=20)
 
     # relaciones
+    multiplex_id = Column(String, ForeignKey("multiplex.id"), nullable=False)
     multiplex = relationship("Multiplex", back_populates="salas")
+
     sillas = relationship("Silla", back_populates="sala", cascade="all, delete")

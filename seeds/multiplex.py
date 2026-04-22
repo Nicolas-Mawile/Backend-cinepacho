@@ -1,85 +1,95 @@
-"""Seed data for multiplexes."""
+"""Seed data for multiplexes - Datos iniciales de cines."""
 
 import asyncio
-import uuid
+from decimal import Decimal
+from sqlalchemy import select
 
 from app.models.multiplex import Multiplex
-from app.models.sala import Sala
-from app.models.silla import Silla
-from app.database import AsyncSessionLocal 
+from app.database import AsyncSessionLocal
+
+
+MULTIPLEX_DATA = [
+    {
+        "nombre": "Titán Plaza",
+        "codigo": "TIT",
+        "ciudad": "Bogotá",
+        "direccion": "Calle 129B #71B-40, Bogotá",
+        "latitud": Decimal("4.663100"),
+        "longitud": Decimal("-74.150300"),
+    },
+    {
+        "nombre": "Unicentro",
+        "codigo": "UNI",
+        "ciudad": "Bogotá",
+        "direccion": "Av. 15 #124-30, Bogotá",
+        "latitud": Decimal("4.697100"),
+        "longitud": Decimal("-74.048100"),
+    },
+    {
+        "nombre": "Plaza Central",
+        "codigo": "PLC",
+        "ciudad": "Bogotá",
+        "direccion": "Calle 30 Sur #43C-80, Bogotá",
+        "latitud": Decimal("4.628500"),
+        "longitud": Decimal("-74.127200"),
+    },
+    {
+        "nombre": "Gran Estación",
+        "codigo": "GRE",
+        "ciudad": "Bogotá",
+        "direccion": "Av. El Dorado #65B-50, Bogotá",
+        "latitud": Decimal("4.650300"),
+        "longitud": Decimal("-74.092000"),
+    },
+    {
+        "nombre": "Embajador (Centro)",
+        "codigo": "EMB",
+        "ciudad": "Bogotá",
+        "direccion": "Cra. 13 #15-50, Bogotá",
+        "latitud": Decimal("4.609900"),
+        "longitud": Decimal("-74.083300"),
+    },
+    {
+        "nombre": "Las Américas",
+        "codigo": "AME",
+        "ciudad": "Bogotá",
+        "direccion": "Cra. 86 #30A-30, Bogotá",
+        "latitud": Decimal("4.641300"),
+        "longitud": Decimal("-74.088400"),
+    },
+]
+
 
 async def run():
+    """
+    Carga datos iniciales de multiplexes.
+    Idempotente: no inserta si ya existen registros.
+    """
     async with AsyncSessionLocal() as db:
-
-        multiplexes = [
-            {
-                "id": str(uuid.uuid4()),
-                "nombre": "Titán Plaza",
-                "codigo": "TITAN",
-                "ciudad": "Bogotá",
-                "direccion": "Av. Boyacá #80-94",
-                "latitud": 4.6940,
-                "longitud": -74.0790,
-                "activo": True
-            },
-            {
-                "id": str(uuid.uuid4()),
-                "nombre": "Unicentro",
-                "codigo": "UNICENTRO",
-                "ciudad": "Bogotá",
-                "direccion": "Cra. 15 #124-30",
-                "latitud": 4.7035,
-                "longitud": -74.0412,
-                "activo": True
-            },
-            {
-                "id": str(uuid.uuid4()),
-                "nombre": "Plaza Central",
-                "codigo": "PLAZA",
-                "ciudad": "Bogotá",
-                "direccion": "Av. NQS #38A-26",
-                "latitud": 4.6306,
-                "longitud": -74.0927,
-                "activo": True
-            },
-            {
-                "id": str(uuid.uuid4()),
-                "nombre": "Gran Estación",
-                "codigo": "GRAN_EST",
-                "ciudad": "Bogotá",
-                "direccion": "Av. El Dorado #69-63",
-                "latitud": 4.6565,
-                "longitud": -74.1068,
-                "activo": True
-            },
-            {
-                "id": str(uuid.uuid4()),
-                "nombre": "Embajador",
-                "codigo": "EMBAJADOR",
-                "ciudad": "Bogotá",
-                "direccion": "Centro",
-                "latitud": 4.6097,
-                "longitud": -74.0817,
-                "activo": True
-            },
-            {
-                "id": str(uuid.uuid4()),
-                "nombre": "Las Américas",
-                "codigo": "AMERICAS",
-                "ciudad": "Bogotá",
-                "direccion": "Av. Américas",
-                "latitud": 4.6230,
-                "longitud": -74.1400,
-                "activo": True
-            },
-        ]
-
-        for m in multiplexes:
-            db.add(Multiplex(**m))
-
-        await db.commit()
-        print("Seed de multiplex ejecutado correctamente")
+        try:
+            # Verificar si ya existen registros
+            stmt = select(Multiplex).limit(1)
+            result = await db.execute(stmt)
+            existing = result.scalar_one_or_none()
+            
+            if existing:
+                print("✓ Seed multiplex: ya existen registros, omitiendo.")
+                return
+            
+            # Insertar nuevos datos
+            for data in MULTIPLEX_DATA:
+                multiplex = Multiplex(**data)
+                db.add(multiplex)
+            
+            await db.commit()
+            print(f"✓ Seed multiplex: {len(MULTIPLEX_DATA)} multiplexes insertados correctamente.")
+            
+        except Exception as e:
+            await db.rollback()
+            print(f"✗ Error en seed multiplex: {str(e)}")
+            raise
 
 
 if __name__ == "__main__":
+    """Permite ejecutar este seed directamente: python seeds/multiplex.py"""
     asyncio.run(run())

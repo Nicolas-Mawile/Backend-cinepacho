@@ -13,10 +13,10 @@ class Silla(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
 
-    fila = Column(String, nullable=False)   # A, B, C...
-    numero = Column(String, nullable=False) # 1, 2, 3...
+    fila = Column(String, nullable=False)
+    numero = Column(String, nullable=False)
 
-    tipo = Column(String, nullable=False)  # GENERAL | PREFERENCIAL
+    tipo = Column(String, nullable=False)
 
     sala_id = Column(String, ForeignKey("sala.id"), nullable=False)
 

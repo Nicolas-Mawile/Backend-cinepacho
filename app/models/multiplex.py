@@ -1,6 +1,6 @@
 """Multiplex model."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import relationship
 from sqlalchemy import UUID, Boolean, Column, DateTime, Numeric, String
 
@@ -21,6 +21,6 @@ class Multiplex(Base, TimestampMixin):
     longitud = Column(Numeric(9, 6), nullable=False)
 
     activo = Column(Boolean, default=True)
-    fechaCreacion = Column(DateTime, nullable=False, default=datetime.utcnow)
+    fechaCreacion = Column(DateTime, nullable=False, default=datetime.now(timezone.utc))
 
     salas = relationship("Sala", back_populates="multiplex")
