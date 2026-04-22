@@ -11,3 +11,4 @@ class Cliente(Base, TimestampMixin):
     ultimo_intento = Column(DateTime(timezone=True), nullable=True)
     activo = Column(Boolean, default=True)
     ultimo_login = Column(DateTime(timezone=True), nullable=True)
+    puntos = Column(Integer, default=0)
