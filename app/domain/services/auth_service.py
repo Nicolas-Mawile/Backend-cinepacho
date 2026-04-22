@@ -34,6 +34,12 @@ async def authenticate_user(correo: str, password: str, repo: ClienteRepository)
         return None, "credenciales_invalidas"
 
     await repo.reset_intentos(correo)
-    access_token = crear_token({"sub": str(cliente.id), "tipo": "access"}, timedelta(hours=24))
-    refresh_token = crear_token({"sub": str(cliente.id), "tipo": "refresh"}, timedelta(days=7))
+    access_token = crear_token(
+        {"sub": str(cliente.id), "tipo": "access", "kind": "cliente"},
+        timedelta(hours=24)
+    )
+    refresh_token = crear_token(
+        {"sub": str(cliente.id), "tipo": "refresh", "kind": "cliente"},
+        timedelta(days=7)
+    )
     return {"access_token": access_token, "refresh_token": refresh_token}, None

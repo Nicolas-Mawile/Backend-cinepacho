@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.infrastructure.repositories.cliente_repository import ClienteRepository
 from app.domain.services.auth_service import authenticate_user
+from app.api.dependencies import get_current_user
 from app.database import get_db
 
 router = APIRouter()
@@ -31,3 +32,7 @@ async def registro():
 @router.post("/refresh")
 async def refresh():
     return {"message": "refresh"}
+
+@router.get("/me")
+async def me(user=Depends(get_current_user)):
+    return {"id": user.id, "correo": user.correo}
