@@ -16,14 +16,14 @@ from fastapi import APIRouter
 
 router = APIRouter(prefix="/admin/multiplex", tags=["Admin - Multiplex"])
 
-def get_repository():
+async def get_repository():
     from app.infrastructure.repositories.multiplex_repository import MultiplexRepository
     from app.database import AsyncSessionLocal 
     db = AsyncSessionLocal()
     try:
         yield MultiplexRepository(db)
     finally:
-        db.close()
+        await db.close()
 
 
 @router.get("/", response_model=list[MultiplexResponse])
@@ -43,9 +43,9 @@ async def crear_multiplex(
     repo: MultiplexRepository = Depends(get_repository),
     _: dict = Depends(get_current_admin_general),
 ):
-    codigo = generar_codigo(datos.nombre, repo)
+    codigo = await generar_codigo(datos.nombre, repo)
     multiplex = Multiplex(**datos.model_dump(), codigo=codigo)
-    return repo.crear(multiplex)
+    return await repo.crear(multiplex)
 
 
 @router.put("/{id}", response_model=MultiplexResponse)

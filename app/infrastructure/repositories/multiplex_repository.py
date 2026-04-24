@@ -82,3 +82,9 @@ class MultiplexRepository(AbstractRepository[Multiplex]):
     async def listar(self, skip: int = 0, limite: int = 10, ciudad: Optional[str] = None, activo: Optional[bool] = None) -> list[Multiplex]:
         """Alias de list() con parámetro ciudad."""
         return await self.list(skip, limite, ciudad)
+
+    async def buscar_por_codigo(self, entity_codigo: str) -> Multiplex | None:
+        """Busca un multiplex por su código."""
+        stmt = select(Multiplex).where(Multiplex.codigo == entity_codigo)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
