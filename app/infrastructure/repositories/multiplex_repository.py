@@ -1,4 +1,5 @@
 from typing import Optional
+import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -35,13 +36,16 @@ class MultiplexRepository(AbstractRepository[Multiplex]):
         result = await self.db.execute(stmt)
         return result.scalars().all()
 
-    async def update(self, entity_id: str, data: dict) -> Multiplex | None:
-        """Actualiza un multiplex."""
-        entity = await self.get(entity_id)
+    async def update(self, entity_id: str | uuid.UUID, updates: dict) -> Multiplex | None:
+        """Actualiza un multiplex por ID."""
+        stmt = select(Multiplex).where(Multiplex.id == str(entity_id))
+        result = await self.db.execute(stmt)
+        entity = result.scalar_one_or_none()
+        
         if not entity:
             return None
         
-        for key, value in data.items():
+        for key, value in updates.items():
             setattr(entity, key, value)
         
         await self.commit()
@@ -83,8 +87,14 @@ class MultiplexRepository(AbstractRepository[Multiplex]):
         """Alias de list() con parámetro ciudad."""
         return await self.list(skip, limite, ciudad)
 
-    async def buscar_por_codigo(self, entity_codigo: str) -> Multiplex | None:
+    async def buscar_por_codigo(self, codigo: str) -> Multiplex | None:
         """Busca un multiplex por su código."""
-        stmt = select(Multiplex).where(Multiplex.codigo == entity_codigo)
+        stmt = select(Multiplex).where(Multiplex.codigo == codigo)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+    
+    async def buscar_por_id(self, id: str | uuid.UUID) -> Multiplex | None:
+        """Busca un multiplex por su ID."""
+        stmt = select(Multiplex).where(Multiplex.id == str(id))
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()

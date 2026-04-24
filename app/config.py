@@ -22,9 +22,16 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: list = ["http://localhost:3000", "http://localhost:5173"]
     
+    # Email (SMTP)
+    smtp_server: Optional[str] = None
+    smtp_port: Optional[int] = None
+    smtp_user: Optional[str] = None
+    smtp_password: Optional[str] = None
+    
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"  # Ignorar variables no definidas
 
 
 settings = Settings()

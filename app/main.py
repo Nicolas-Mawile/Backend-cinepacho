@@ -1,12 +1,17 @@
 """FastAPI application entry point."""
 
+import sys
+
 from fastapi import FastAPI
+from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from .config import settings
 from .database import init_db, engine
 from .api.router import router
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 @asynccontextmanager

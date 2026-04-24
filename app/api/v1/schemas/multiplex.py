@@ -1,3 +1,4 @@
+from typing import Optional
 import uuid
 from decimal import Decimal
 from datetime import datetime
@@ -11,11 +12,11 @@ class MultiplexCreate(BaseModel):
     longitud: Decimal = Field(..., ge=-180, le=180)
 
 class MultiplexUpdate(BaseModel):
-    nombre: str | None = Field(None, min_length=3, max_length=150)
-    ciudad: str | None = None
-    direccion: str | None = None
-    latitud: Decimal | None = None
-    longitud: Decimal | None = None
+    nombre: Optional[str] | None = Field(None, min_length=3, max_length=150)
+    ciudad: Optional[str] | None = None
+    direccion: Optional[str] | None = None
+    latitud: Optional[Decimal] | None = None
+    longitud: Optional[Decimal] | None = None
 
 class MultiplexResponse(BaseModel):
     id: str
