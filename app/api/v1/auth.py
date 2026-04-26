@@ -10,6 +10,7 @@ from app.api.dependencies import get_current_user
 from app.database import get_db
 from app.config import settings
 from datetime import timedelta
+from app.domain.services.auth_service import authenticate_empleado
 
 router = APIRouter()
 

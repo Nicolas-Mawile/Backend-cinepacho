@@ -54,3 +54,28 @@ async def authenticate_user(correo: str, password: str, repo: ClienteRepository,
         )
 
     return {"access_token": access_token, "refresh_token": refresh_token}, None
+
+
+async def authenticate_empleado(correo: str, password: str, db):
+    from sqlalchemy import select
+    from app.models.empleado import Empleado
+    result = await db.execute(select(Empleado).where(Empleado.correo == correo))
+    empleado = result.scalar_one_or_none()
+
+    if not empleado:
+        return None, "credenciales_invalidas"
+    if not empleado.activo:
+        return None, "credenciales_invalidas"
+    if not pwd_context.verify(password, empleado.password_hash):
+        return None, "credenciales_invalidas"
+
+    refresh_expires = timedelta(days=7)
+    access_token = crear_token(
+        {"sub": str(empleado.id), "tipo": "access", "kind": "empleado", "cargo": empleado.cargo},
+        timedelta(hours=24)
+    )
+    refresh_token = crear_token(
+        {"sub": str(empleado.id), "tipo": "refresh", "kind": "empleado"},
+        refresh_expires
+    )
+    return {"access_token": access_token, "refresh_token": refresh_token}, None

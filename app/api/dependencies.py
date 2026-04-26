@@ -8,6 +8,7 @@ from app.config import settings
 from app.models.cliente import Cliente
 from app.models.empleado import Empleado
 from app.database import get_db
+from typing import List
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/login")
 
@@ -51,6 +52,24 @@ async def get_current_admin_mx(user=Depends(get_current_user)):
     if not isinstance(user, Empleado) or user.cargo != "admin_multiplex":
         raise HTTPException(status_code=403, detail="Se requiere rol de admin_multiplex")
     return user
+
+async def get_current_admin_general(user=Depends(get_current_user)):
+    if not isinstance(user, Empleado) or user.cargo != "admin_general":
+        raise HTTPException(status_code=403, detail="Se requiere rol de admin_general")
+    return user
+
+
+
+def require_role(roles_permitidos: List[str]):
+    async def checker(user=Depends(get_current_user)):
+        if isinstance(user, Cliente):
+            if "cliente" not in roles_permitidos:
+                raise HTTPException(status_code=403, detail="Acceso denegado")
+        elif isinstance(user, Empleado):
+            if user.cargo not in roles_permitidos and "admin_general" not in roles_permitidos:
+                raise HTTPException(status_code=403, detail="Acceso denegado")
+        return user
+    return checker
 
 async def get_current_admin_general(user=Depends(get_current_user)):
     if not isinstance(user, Empleado) or user.cargo != "admin_general":
