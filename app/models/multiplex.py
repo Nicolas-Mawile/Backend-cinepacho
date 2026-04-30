@@ -11,7 +11,7 @@ import uuid
 class Multiplex(Base, TimestampMixin):
     __tablename__ = "multiplex"
 
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     codigo = Column(String, unique=True, nullable=False)
     nombre = Column(String, nullable=False)
     direccion = Column(String, nullable=False)
