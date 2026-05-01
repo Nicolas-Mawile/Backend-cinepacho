@@ -1,10 +1,17 @@
 """Boleta model."""
-
 from sqlalchemy import Column, Integer, ForeignKey, Float
+from .base import Base
+from sqlalchemy.orm import relationship
 
-from .base import Base, TimestampMixin
+class Boleta(Base):
+    __tablename__ = "boletas"
 
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    
+    funcionId = Column(Integer, ForeignKey("funciones.id"), nullable=False)
+    sillaId = Column(Integer, ForeignKey("sillas.id"), nullable=False)
 
-class Boleta(Base, TimestampMixin):
-    reserva_id = Column(Integer, ForeignKey("reserva_temporal.id"), nullable=False)
-    total = Column(Float, nullable=False)
+    funcion = relationship("Funcion", back_populates="boletas")
+    silla = relationship("Silla")
+
+    detalle = relationship("DetalleBoleta", back_populates="boleta", uselist=False)

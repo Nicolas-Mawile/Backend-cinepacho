@@ -1,11 +1,18 @@
 """Pago model."""
+from sqlalchemy import Column, DateTime, Integer, ForeignKey, Float, String
+from .base import Base
+from enum import Enum
+from .EstadoPagoEnum import EstadoPagoEnum
+from sqlalchemy.orm import relationship
 
-from sqlalchemy import Column, Integer, ForeignKey, Float, String
+class Pago(Base):
+    __tablename__ = "pagos"
 
-from .base import Base, TimestampMixin
-
-
-class Pago(Base, TimestampMixin):
-    boleta_id = Column(Integer, ForeignKey("boleta.id"), nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     monto = Column(Float, nullable=False)
-    estado = Column(String, nullable=False)
+    estado = Column(Enum(EstadoPagoEnum), nullable=False)
+    metodoPago = Column(String, nullable=False)
+    fechaPago = Column(DateTime, nullable=False)
+
+    facturaId = Column(Integer, ForeignKey("facturas.id"), nullable=False)
+    factura = relationship("Factura", back_populates="pagos")

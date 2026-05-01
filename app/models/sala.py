@@ -1,10 +1,19 @@
 """Sala model."""
+from sqlalchemy import Boolean, Column, Integer, ForeignKey
+from sqlalchemy.orm import relationship
+from .base import Base
 
-from sqlalchemy import Column, Integer, String, ForeignKey
+class Sala(Base):
+    __tablename__ = "Salas"
 
-from .base import Base, TimestampMixin
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    numero = Column(Integer, nullable=False, unique=True)
+    estaActiva = Column(Boolean, default=True)
+    capacidadTotal = Column(Integer, nullable=False)
+    capacidadPreferencial = Column(Integer, nullable=False)
 
+    multiplexId = Column(Integer, ForeignKey("multiplex.id"), nullable=False)
+    multiplex = relationship("Multiplex", back_populates="salas")
 
-class Sala(Base, TimestampMixin):
-    multiplex_id = Column(Integer, ForeignKey("multiplex.id"), nullable=False)
-    nombre = Column(String, nullable=False)
+    sillas = relationship("Silla", back_populates="sala")
+    funciones = relationship("Funcion", back_populates="sala")

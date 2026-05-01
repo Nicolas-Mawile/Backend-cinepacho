@@ -1,9 +1,16 @@
 """Cliente model."""
 
-from sqlalchemy import Column, String
+from sqlalchemy import Column, ForeignKey, Integer, String
+from cinepachobackend.app.models.persona import Persona
+from sqlalchemy.orm import relationship
 
-from .base import Base, TimestampMixin
+class Cliente(Persona):
+    __tablename__ = "clientes"
+    id = Column(Integer, ForeignKey('personas.id'), primary_key=True)
+    puntaje = Column(Integer, nullable=False, default=0)
 
+    usuario = relationship("Usuario", back_populates="cliente", uselist=False, nullable=True)
 
-class Cliente(Base, TimestampMixin):
-    nombre = Column(String, nullable=False)
+    __mapper_args__ = {
+        'polymorphic_identity': 'cliente'
+    }
