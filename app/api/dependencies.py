@@ -2,7 +2,7 @@
 
 from fastapi import Depends, HTTPException, Header, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import jwt
 
@@ -12,9 +12,9 @@ from ..database import get_db
 security = HTTPBearer()
 
 
-async def get_current_user(
+def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(get_db)
+    db: Session = Depends(get_db)
 ):
     """
     Extrae y valida el JWT del header Authorization.
@@ -46,7 +46,7 @@ async def get_current_user(
 
 def require_rol(role: str):
     """Crea una dependencia que requiere un rol específico."""
-    async def check_rol(current_user = Depends(get_current_user)):
+    def check_rol(current_user = Depends(get_current_user)):
         # TODO: Implementar lógica de verificación de rol
         # Por ahora es un placeholder
         return current_user
@@ -55,13 +55,13 @@ def require_rol(role: str):
 
 def require_multiplex(multiplex_id: int):
     """Crea una dependencia que verifica acceso a un multiplex."""
-    async def check_multiplex(current_user = Depends(get_current_user)):
+    def check_multiplex(current_user = Depends(get_current_user)):
         # TODO: Implementar lógica de verificación de acceso a multiplex
         return current_user
     return check_multiplex
 
 
-async def get_current_admin_general(x_test_role: str = Header(default="admin_general")):
+def get_current_admin_general(x_test_role: str = Header(default="admin_general")):
     """
     Valida que el usuario sea administrador general.
     Protege endpoints administrativos globales.

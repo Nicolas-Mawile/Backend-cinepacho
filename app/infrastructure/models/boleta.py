@@ -14,4 +14,4 @@ class Boleta(Base):
     funcion = relationship("Funcion", back_populates="boletas")
     silla = relationship("Silla")
 
-    detalle = relationship("DetalleBoleta", back_populates="boleta", uselist=False)
+    detalle = relationship("DetalleFactura", back_populates="boleta", uselist=False)

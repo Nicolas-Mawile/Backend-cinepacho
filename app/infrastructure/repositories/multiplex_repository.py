@@ -1,100 +1,107 @@
 from typing import Optional
-import uuid
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from sqlalchemy import select, func
-from decimal import Decimal
 
-from app.models.multiplex import Multiplex
-from app.models.sala import Sala
+from app.infrastructure.models.multiplex import Multiplex
+from app.infrastructure.models.sala import Sala
 from app.infrastructure.base_repository import AbstractRepository
 
 
 class MultiplexRepository(AbstractRepository[Multiplex]):
     """Repositorio para entidades Multiplex."""
 
-    async def add(self, entity: Multiplex) -> Multiplex:
+    def add(self, entity: Multiplex) -> Multiplex:
         """Crea un nuevo multiplex."""
         self.db.add(entity)
-        await self.commit()
+        self.db.commit()
         return entity
 
-    async def get(self, entity_id: str) -> Multiplex | None:
+    def get(self, entity_id: int) -> Multiplex | None:
         """Obtiene multiplex por ID."""
         stmt = select(Multiplex).where(Multiplex.id == entity_id)
-        result = await self.db.execute(stmt)
+        result = self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list(self, skip: int = 0, limit: int = 10, ciudad: str = None) -> list[Multiplex]:
+    def list(self, skip: int = 0, limit: int = 10, ciudad: str = None, activo: bool = None) -> list[Multiplex]:
         """Lista multiplexes con filtros opcionales."""
         stmt = select(Multiplex)
         
         if ciudad:
             stmt = stmt.where(Multiplex.ciudad == ciudad)
         
+        if activo is not None:
+            stmt = stmt.where(Multiplex.estaActivo == activo)
+        
         stmt = stmt.offset(skip).limit(limit)
-        result = await self.db.execute(stmt)
+        result = self.db.execute(stmt)
         return result.scalars().all()
 
-    async def update(self, entity_id: str | uuid.UUID, updates: dict) -> Multiplex | None:
+    def update(self, entity_id: int | str, updates: dict) -> Multiplex | None:
         """Actualiza un multiplex por ID."""
-        stmt = select(Multiplex).where(Multiplex.id == str(entity_id))
-        result = await self.db.execute(stmt)
+        entity_id_int = int(entity_id) if isinstance(entity_id, str) else entity_id
+        stmt = select(Multiplex).where(Multiplex.id == entity_id_int)
+        result = self.db.execute(stmt)
         entity = result.scalar_one_or_none()
         
         if not entity:
             return None
         
         for key, value in updates.items():
-            setattr(entity, key, value)
+            if key == "activo":
+                setattr(entity, "estaActivo", value)
+            else:
+                setattr(entity, key, value)
         
-        await self.commit()
+        self.db.commit()
         return entity
 
-    async def delete(self, entity_id: str) -> bool:
+    def delete(self, entity_id: int) -> bool:
         """Elimina un multiplex."""
-        entity = await self.get(entity_id)
+        entity = self.get(entity_id)
         if not entity:
             return False
-        
-        await self.db.delete(entity)
-        await self.commit()
+
+        self.db.delete(entity)
+        self.db.commit()
         return True
 
-    async def exists(self, entity_id: str) -> bool:
+    def exists(self, entity_id: int) -> bool:
         """Verifica si existe un multiplex."""
         stmt = select(func.count()).where(Multiplex.id == entity_id)
-        result = await self.db.scalar(stmt)
+        result = self.db.scalar(stmt)
         return result > 0
 
     # Métodos específicos del negocio
-    async def tiene_dependencias(self, multiplex_id: str) -> bool:
+    def tiene_dependencias(self, multiplex_id: int | str) -> bool:
         """Verifica si el multiplex tiene salas."""
-        stmt = select(func.count(Sala.id)).where(Sala.multiplex_id == multiplex_id)
-        count = await self.db.scalar(stmt)
+        multiplex_id_int = int(multiplex_id) if isinstance(multiplex_id, str) else multiplex_id
+        stmt = select(func.count(Sala.id)).where(Sala.multiplexId == multiplex_id_int)
+        count = self.db.scalar(stmt)
         return count > 0
 
-    async def desactivar(self, multiplex_id: str) -> Multiplex | None:
+    def desactivar(self, multiplex_id: int | str) -> Multiplex | None:
         """Desactiva un multiplex."""
-        return await self.update(multiplex_id, {"activo": False})
+        return self.update(multiplex_id, {"activo": False})
 
     # Alias para compatibilidad con tests
-    async def crear(self, entity: Multiplex) -> Multiplex:
+    def crear(self, entity: Multiplex) -> Multiplex:
         """Alias de add() para compatibilidad."""
-        return await self.add(entity)
+        return self.add(entity)
 
-    async def listar(self, skip: int = 0, limite: int = 10, ciudad: Optional[str] = None, activo: Optional[bool] = None) -> list[Multiplex]:
+    def listar(self, skip: int = 0, limite: int = 10, ciudad: Optional[str] = None, activo: Optional[bool] = None) -> list[Multiplex]:
         """Alias de list() con parámetro ciudad."""
-        return await self.list(skip, limite, ciudad)
+        return self.list(skip, limite, ciudad, activo)
 
-    async def buscar_por_codigo(self, codigo: str) -> Multiplex | None:
+    def buscar_por_codigo(self, codigo: str) -> Multiplex | None:
         """Busca un multiplex por su código."""
         stmt = select(Multiplex).where(Multiplex.codigo == codigo)
-        result = await self.db.execute(stmt)
+        result = self.db.execute(stmt)
         return result.scalar_one_or_none()
     
-    async def buscar_por_id(self, id: str | uuid.UUID) -> Multiplex | None:
+    def buscar_por_id(self, id: int | str) -> Multiplex | None:
         """Busca un multiplex por su ID."""
-        stmt = select(Multiplex).where(Multiplex.id == str(id))
-        result = await self.db.execute(stmt)
+        id_int = int(id) if isinstance(id, str) else id
+        stmt = select(Multiplex).where(Multiplex.id == id_int)
+        result = self.db.execute(stmt)
         return result.scalar_one_or_none()

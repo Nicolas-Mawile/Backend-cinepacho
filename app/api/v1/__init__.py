@@ -1,3 +1,3 @@
 """API v1 package."""
 
-from . import auth, cartelera, reservas, pagos, snacks, puntos, evaluaciones, clientes
+from . import auth, clientes, comidas, compra, empleados, evaluaciones, funciones, multiplex, peliculas, reportes, salas, sillas

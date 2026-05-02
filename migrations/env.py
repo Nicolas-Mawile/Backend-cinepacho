@@ -1,11 +1,7 @@
-from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
-from app.models.base import Base
-from app.models.multiplex import Multiplex
-from app.models.sala import Sala
-from app.models.silla import Silla
+from app.infrastructure.models.base import Base
 
 config = context.config
 

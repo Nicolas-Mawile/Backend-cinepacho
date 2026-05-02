@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from typing import Generic, TypeVar, Optional, List
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 T = TypeVar("T")
 
@@ -16,17 +16,17 @@ class AbstractRepository(ABC, Generic[T]):
         T: Tipo genérico que representa la entidad a persistir
     """
     
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: Session):
         """
         Inicializa el repositorio con una sesión de BD.
         
         Args:
-            db: Sesión asincrónica de SQLAlchemy
+            db: Sesión síncrona de SQLAlchemy
         """
         self.db = db
     
     @abstractmethod
-    async def add(self, entity: T) -> T:
+    def add(self, entity: T) -> T:
         """
         Agrega una nueva entidad a la BD.
         
@@ -39,7 +39,7 @@ class AbstractRepository(ABC, Generic[T]):
         pass
     
     @abstractmethod
-    async def get(self, entity_id: int) -> Optional[T]:
+    def get(self, entity_id: int) -> Optional[T]:
         """
         Obtiene una entidad por su ID.
         
@@ -52,7 +52,7 @@ class AbstractRepository(ABC, Generic[T]):
         pass
     
     @abstractmethod
-    async def list(self, skip: int = 0, limit: int = 10) -> List[T]:
+    def list(self, skip: int = 0, limit: int = 10) -> List[T]:
         """
         Lista todas las entidades con paginación.
         
@@ -66,7 +66,7 @@ class AbstractRepository(ABC, Generic[T]):
         pass
     
     @abstractmethod
-    async def update(self, entity_id: int, data: dict) -> Optional[T]:
+    def update(self, entity_id: int, data: dict) -> Optional[T]:
         """
         Actualiza una entidad existente.
         
@@ -80,7 +80,7 @@ class AbstractRepository(ABC, Generic[T]):
         pass
     
     @abstractmethod
-    async def delete(self, entity_id: int) -> bool:
+    def delete(self, entity_id: int) -> bool:
         """
         Elimina una entidad por su ID.
         
@@ -93,7 +93,7 @@ class AbstractRepository(ABC, Generic[T]):
         pass
     
     @abstractmethod
-    async def exists(self, entity_id: int) -> bool:
+    def exists(self, entity_id: int) -> bool:
         """
         Verifica si una entidad existe.
         
@@ -105,10 +105,10 @@ class AbstractRepository(ABC, Generic[T]):
         """
         pass
     
-    async def commit(self):
+    def commit(self):
         """Confirma los cambios en la BD."""
-        await self.db.commit()
+        self.db.commit()
     
-    async def rollback(self):
+    def rollback(self):
         """Revierte los cambios no confirmados."""
-        await self.db.rollback()
+        self.db.rollback()

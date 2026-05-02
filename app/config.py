@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     debug: bool = False
     
     # Database
-    database_url: str = "sqlite+aiosqlite:///./cinepacho.db"
+    database_url: str = "postgresql://cinepacho_user:123456@localhost:5432/cinepacho"
     
     # JWT
     secret_key: str = "tu-clave-secreta-cambiar-en-produccion"

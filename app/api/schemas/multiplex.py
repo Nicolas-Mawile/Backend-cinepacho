@@ -19,15 +19,19 @@ class MultiplexUpdate(BaseModel):
     longitud: Optional[Decimal] | None = None
 
 class MultiplexResponse(BaseModel):
-    id: str
+    id: int
     nombre: str
     codigo: str
     ciudad: str
     direccion: str
     latitud: Decimal
     longitud: Decimal
-    activo: bool
-    fecha_creacion: datetime = Field(..., alias="fechaCreacion")
-    cantidad_salas: int = 0   # calculado en el endpoint
 
-    model_config = {"from_attributes": True}
+    activo: bool = Field(alias="estaActivo")
+
+    cantidad_salas: int = 0
+
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True
+    }

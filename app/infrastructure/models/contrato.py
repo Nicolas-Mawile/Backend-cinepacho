@@ -1,5 +1,5 @@
 from sqlalchemy import Column, ForeignKey, String
-from cinepachobackend.app.infrastructure.models.base import Base
+from app.infrastructure.models.base import Base
 from sqlalchemy.orm import relationship
 
 class Contrato(Base):
@@ -10,7 +10,7 @@ class Contrato(Base):
     salario = Column(String, nullable=False)
 
     empleadoId = Column(ForeignKey("empleados.id"), nullable=False)
-    empleado = relationship("Empleado", back_populates="contrato")
-
-    multiplexId = Column(ForeignKey("multiplexes.id"), nullable=False)
+    empleado = relationship("Empleado", back_populates="contratos")
+    
+    multiplexId = Column(ForeignKey("multiplex.id"), nullable=False)
     multiplex = relationship("Multiplex", back_populates="contratos")

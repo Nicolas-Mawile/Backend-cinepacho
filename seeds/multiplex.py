@@ -1,11 +1,10 @@
 """Seed data for multiplexes - Datos iniciales de cines."""
 
-import asyncio
 from decimal import Decimal
 from sqlalchemy import select
 
-from app.models.multiplex import Multiplex
-from app.database import AsyncSessionLocal
+from app.infrastructure.models.multiplex import Multiplex
+from app.database import SessionLocal
 
 
 MULTIPLEX_DATA = [
@@ -60,16 +59,16 @@ MULTIPLEX_DATA = [
 ]
 
 
-async def run():
+def run():
     """
     Carga datos iniciales de multiplexes.
     Idempotente: no inserta si ya existen registros.
     """
-    async with AsyncSessionLocal() as db:
+    with SessionLocal() as db:
         try:
             # Verificar si ya existen registros
             stmt = select(Multiplex).limit(1)
-            result = await db.execute(stmt)
+            result = db.execute(stmt)
             existing = result.scalar_one_or_none()
             
             if existing:
@@ -81,15 +80,15 @@ async def run():
                 multiplex = Multiplex(**data)
                 db.add(multiplex)
             
-            await db.commit()
+            db.commit()
             print(f"✓ Seed multiplex: {len(MULTIPLEX_DATA)} multiplexes insertados correctamente.")
             
         except Exception as e:
-            await db.rollback()
+            db.rollback()
             print(f"✗ Error en seed multiplex: {str(e)}")
             raise
 
 
 if __name__ == "__main__":
     """Permite ejecutar este seed directamente: python seeds/multiplex.py"""
-    asyncio.run(run())
+    run()

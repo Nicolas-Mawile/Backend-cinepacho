@@ -1,10 +1,9 @@
 """Seed data for configuración del sistema."""
 
-import asyncio
 from sqlalchemy import select
 
-from app.models.configuracion import Configuracion
-from app.database import AsyncSessionLocal
+from app.infrastructure.models.configuracion import Configuracion
+from app.database import SessionLocal
 
 
 CONFIG_DATA = [
@@ -23,16 +22,16 @@ CONFIG_DATA = [
 ]
 
 
-async def run():
+def run():
     """
     Carga configuración del sistema.
     Idempotente: solo inserta si no existen registros.
     """
-    async with AsyncSessionLocal() as db:
+    with SessionLocal() as db:
         try:
             # Verificar si ya existen registros
             stmt = select(Configuracion).limit(1)
-            result = await db.execute(stmt)
+            result = db.execute(stmt)
             existing = result.scalar_one_or_none()
             
             if existing:
@@ -50,15 +49,15 @@ async def run():
                 )
                 db.add(config)
             
-            await db.commit()
+            db.commit()
             print(f"✓ Seed configuracion: {len(CONFIG_DATA)} valores insertados.")
             
         except Exception as e:
-            await db.rollback()
+            db.rollback()
             print(f"✗ Error en seed configuracion: {str(e)}")
             raise
 
 
 if __name__ == "__main__":
     """Ejecutar directamente: python seeds/configuracion.py"""
-    asyncio.run(run())
+    run()

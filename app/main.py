@@ -21,20 +21,20 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     print("Inicializando Cinepacho Backend...")
-    await init_db()
+    init_db()
     print("Base de datos inicializada")
     
     # Ejecutar seeds
     from seeds.multiplex import run as seed_multiplex
     from seeds.configuracion import run as seed_config
-    await seed_multiplex()
-    await seed_config()
+    seed_multiplex()
+    seed_config()
     
     yield
     
     # Shutdown
     print("Cerrando conexiones...")
-    await engine.dispose()
+    engine.dispose()
     print("Aplicación cerrada")
 
 
@@ -59,17 +59,14 @@ app.include_router(router, prefix="/api/v1")
 
 
 @app.get("/health")
-async def health_check():
-    """Endpoint para verificar que el servidor está en línea."""
+def health_check():
     return {"status": "ok", "app": settings.app_name}
 
 
 @app.get("/")
-async def root():
-    """Endpoint raíz."""
+def root():
     return {
         "message": "Bienvenido a Cinepacho Backend",
         "docs": "/docs",
         "openapi": "/openapi.json"
     }
-
