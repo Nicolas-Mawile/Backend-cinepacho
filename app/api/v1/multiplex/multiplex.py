@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.api.dependencies import get_current_admin_general
 from app.infrastructure.repositories.multiplex_repository import MultiplexRepository
 from app.domain.services.multiplex_service import generar_codigo
-from app.models import Multiplex
+from app.infrastructure.models import Multiplex
 from app.database import AsyncSessionLocal
 
 import uuid
