@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Float, Integer, String
 
-from cinepachobackend.app.models.base import Base
+from cinepachobackend.app.infrastructure.models.base import Base
 
 class TipoSiilla(Base):
     __tablename__ = "tipoSilla"

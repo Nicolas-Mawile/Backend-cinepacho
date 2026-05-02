@@ -1,7 +1,7 @@
 """Cliente model."""
 
 from sqlalchemy import Column, ForeignKey, Integer, String
-from cinepachobackend.app.models.persona import Persona
+from cinepachobackend.app.infrastructure.models.persona import Persona
 from sqlalchemy.orm import relationship
 
 class Cliente(Persona):

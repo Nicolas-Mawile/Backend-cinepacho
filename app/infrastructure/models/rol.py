@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String
-from rol_permiso import rol_permiso
-from cinepachobackend.app.models.base import Base
+from cinepachobackend.app.infrastructure.models.rol_permiso import rol_permiso
+from cinepachobackend.app.infrastructure.models.base import Base
 from sqlalchemy.orm import relationship
 
 class Rol(Base):

@@ -2,8 +2,8 @@
 
 from sqlalchemy import Column, ForeignKey, Integer, String, Enum
 from sqlalchemy.orm import relationship
-from cinepachobackend.app.models.cargo import Cargo
-from cinepachobackend.app.models.persona import Persona
+from cinepachobackend.app.infrastructure.models.cargo import Cargo
+from cinepachobackend.app.infrastructure.models.persona import Persona
 
 class Empleado(Persona):
     __tablename__ = "Empleados"

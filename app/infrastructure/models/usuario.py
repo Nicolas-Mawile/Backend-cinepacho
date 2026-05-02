@@ -1,6 +1,6 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
 
-from cinepachobackend.app.models.base import Base, TimestampMixin
+from cinepachobackend.app.infrastructure.models.base import Base, TimestampMixin
 from sqlalchemy.orm import relationship
 
 class Usuario(Base, TimestampMixin):

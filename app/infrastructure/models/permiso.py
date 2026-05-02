@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String
 
-from cinepachobackend.app.models import rol_permiso
-from cinepachobackend.app.models.base import Base
+from cinepachobackend.app.infrastructure.models import rol_permiso
+from cinepachobackend.app.infrastructure.models.base import Base
 from sqlalchemy.orm import relationship
 
 class Permiso(Base):
