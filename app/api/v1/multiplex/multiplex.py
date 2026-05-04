@@ -9,8 +9,6 @@ from app.infrastructure.repositories.multiplex_repository import MultiplexReposi
 from app.domain.services.multiplex_service import generar_codigo
 from app.infrastructure.models import Multiplex
 
-import uuid
-
 from fastapi import APIRouter
 
 router = APIRouter(prefix="/admin/multiplex", tags=["Admin - Multiplex"])
