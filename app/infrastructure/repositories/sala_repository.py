@@ -70,9 +70,9 @@ class SalaRepository(AbstractRepository[Sala]):
         result = self.db.execute(stmt)
         return result.scalars().all()
 
-    def obtener_por_numero(self, numero: int) -> Sala | None:
-        """Obtiene sala por número."""
-        stmt = select(Sala).where(Sala.numero == numero)
+    def obtener_por_numero(self, numero: int, multiplex_id: int) -> Sala | None:
+        """Obtiene sala por número y multiplex."""
+        stmt = select(Sala).where(Sala.numero == numero, Sala.multiplexId == multiplex_id)
         result = self.db.execute(stmt)
         return result.scalar_one_or_none()
 

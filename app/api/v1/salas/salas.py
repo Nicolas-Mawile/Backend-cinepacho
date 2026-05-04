@@ -11,9 +11,10 @@ from app.domain.exceptions import (
     MultiplexNotFoundError,
     SalaLimitExceededError,
     DuplicateNumeroSalaError,
+    SalaConfigurationError,
 )
 
-router = APIRouter(prefix="/api/v1", tags=["Salas"])
+router = APIRouter(tags=["Salas"])
 
 
 def get_service():
@@ -36,6 +37,8 @@ def handle_domain_error(exc: Exception):
         raise HTTPException(status_code=409, detail=str(exc))
     elif isinstance(exc, DuplicateNumeroSalaError):
         raise HTTPException(status_code=409, detail=str(exc))
+    elif isinstance(exc, SalaConfigurationError):
+        raise HTTPException(status_code=400, detail=str(exc))
     raise exc
 
 
@@ -72,7 +75,7 @@ def crear_sala(
     try:
         sala = service.crear_sala(multiplex_id, datos)
         return sala
-    except (MultiplexNotFoundError, SalaLimitExceededError, DuplicateNumeroSalaError) as e:
+    except (MultiplexNotFoundError, SalaLimitExceededError, DuplicateNumeroSalaError, SalaConfigurationError) as e:
         handle_domain_error(e)
 
 
@@ -163,10 +166,10 @@ def actualizar_sala(
 
 @router.delete(
     "/salas/{sala_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=status.HTTP_200_OK,
     summary="Eliminar una sala",
     responses={
-        204: {"description": "Sala eliminada"},
+        200: {"description": "Sala eliminada"},
         404: {"description": "Sala no encontrada"},
     },
 )
@@ -184,6 +187,7 @@ def eliminar_sala(
     """
     if not service.eliminar_sala(sala_id):
         raise HTTPException(status_code=404, detail="Sala no encontrada")
+    return {"message": "Sala eliminada"}
 
 
 @router.patch(

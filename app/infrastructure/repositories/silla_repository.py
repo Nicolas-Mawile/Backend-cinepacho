@@ -52,6 +52,22 @@ class SillaRepository(AbstractRepository[Silla]):
         self.db.commit()
         return True
 
+    def add_many(self, entities: list[Silla]) -> list[Silla]:
+        """Agrega varias sillas de una vez."""
+        self.db.add_all(entities)
+        self.db.commit()
+        return entities
+
+    def eliminar_por_sala(self, sala_id: int) -> int:
+        """Elimina todas las sillas de una sala."""
+        stmt = select(Silla).where(Silla.salaId == sala_id)
+        result = self.db.execute(stmt)
+        sillas = result.scalars().all()
+        for silla in sillas:
+            self.db.delete(silla)
+        self.db.commit()
+        return len(sillas)
+
     def exists(self, entity_id: int) -> bool:
         """Verifica si existe una silla."""
         stmt = select(func.count()).where(Silla.id == entity_id)

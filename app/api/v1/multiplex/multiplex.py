@@ -7,9 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.api.dependencies import get_current_admin_general
 from app.infrastructure.repositories.multiplex_repository import MultiplexRepository
 from app.domain.services.multiplex_service import generar_codigo
+from app.domain.services.sala_service import SalaService
 from app.infrastructure.models import Multiplex
-
-from fastapi import APIRouter
 
 router = APIRouter(prefix="/admin/multiplex", tags=["Admin - Multiplex"])
 
@@ -29,7 +28,9 @@ def listar_multiplex(ciudad: str | None = Query(None), activo: bool | None = Que
                            repo: MultiplexRepository = Depends(get_repository),
                            _: dict = Depends(get_current_admin_general),):
     
-    return repo.listar(ciudad=ciudad, activo=activo, limite=limite)
+    skip = (pagina - 1) * limite
+    return repo.listar(skip=skip, ciudad=ciudad, activo=activo, limite=limite)
+
 
 @router.post("/", response_model=MultiplexResponse, status_code=201)
 def crear_multiplex(datos: MultiplexCreate, repo: MultiplexRepository = Depends(get_repository),
@@ -37,7 +38,13 @@ def crear_multiplex(datos: MultiplexCreate, repo: MultiplexRepository = Depends(
     
     code = generar_codigo(datos.nombre, repo)
     multiplex = Multiplex(**datos.model_dump(), codigo=code)
-    return repo.crear(multiplex)
+    multiplex = repo.crear(multiplex)
+
+    sala_service = SalaService(repo.db)
+    sala_service.crear_salas_predeterminadas(multiplex.id)
+
+    repo.db.refresh(multiplex)
+    return multiplex
 
 @router.put("/{id}", response_model=MultiplexResponse)
 def editar_multiplex(id: str, datos: MultiplexUpdate,

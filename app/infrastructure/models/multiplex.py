@@ -20,3 +20,15 @@ class Multiplex(Base):
 
     salas = relationship("Sala", back_populates="multiplex")
     contratos = relationship("Contrato", back_populates="multiplex")
+
+    @property
+    def cantidad_salas(self) -> int:
+        return len(self.salas or [])
+
+    @property
+    def activo(self) -> bool:
+        return self.estaActivo
+
+    @activo.setter
+    def activo(self, value: bool) -> None:
+        self.estaActivo = value

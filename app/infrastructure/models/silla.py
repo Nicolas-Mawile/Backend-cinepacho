@@ -17,3 +17,7 @@ class Silla(Base):
 
     tipoSillaId = Column(Integer, ForeignKey("tipoSilla.id"), nullable=False)
     tipoSilla = relationship("TipoSilla")
+
+    @property
+    def tipo_silla(self) -> str | None:
+        return self.tipoSilla.nombre if self.tipoSilla is not None else None

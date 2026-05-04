@@ -34,6 +34,11 @@ class DuplicateNumeroSalaError(ValidationError):
     pass
 
 
+class SalaConfigurationError(ValidationError):
+    """Configuración inválida de sala."""
+    pass
+
+
 class SalaDependenciesError(ValidationError):
     """La sala tiene dependencias (funciones, sillas)."""
     pass

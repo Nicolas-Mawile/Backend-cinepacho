@@ -110,14 +110,14 @@ def test_obtener_por_numero(repo, multiplex_id):
     )
     repo.add(sala)
     
-    obtenida = repo.obtener_por_numero(42)
+    obtenida = repo.obtener_por_numero(42, multiplex_id)
     assert obtenida is not None
     assert obtenida.numero == 42
 
 
 def test_obtener_por_numero_inexistente(repo):
     """Test obtener sala por número que no existe."""
-    obtenida = repo.obtener_por_numero(999)
+    obtenida = repo.obtener_por_numero(999, multiplex_id)
     assert obtenida is None
 
 
