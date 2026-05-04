@@ -52,20 +52,6 @@ def editar_multiplex(id: str, datos: MultiplexUpdate,
     actualizado = repo.update(id, datos.model_dump(exclude_none=True))
     return actualizado
 
-@router.delete("/{id}", status_code=204)
-def eliminar_multiplex(id: str, repo: MultiplexRepository = Depends(get_repository),
-                             _: dict = Depends(get_current_admin_general),):
-    
-    existente = repo.buscar_por_id(id)
-    if not existente:
-        raise HTTPException(404, "Multiplex no encontrado")
-    if repo.tiene_dependencias(id):
-        raise HTTPException(
-            409,
-            "No se puede eliminar: el multiplex tiene salas activas. "
-            "Use PATCH /{id}/estado para desactivarlo."
-        )
-    repo.desactivar(id)
 
 @router.patch("/{id}/estado", response_model=MultiplexResponse)
 def cambiar_estado_multiplex(
