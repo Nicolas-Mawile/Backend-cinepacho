@@ -24,7 +24,7 @@ class SillaRepository(AbstractRepository[Silla]):
         result = self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    def list(self, skip: int = 0, limit: int = 10) -> list[Silla]:
+    def get_all(self, skip: int = 0, limit: int = 10) -> list[Silla]:
         """Lista todas las sillas."""
         stmt = select(Silla).offset(skip).limit(limit)
         result = self.db.execute(stmt)

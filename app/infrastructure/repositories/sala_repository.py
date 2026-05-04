@@ -22,7 +22,7 @@ class SalaRepository(AbstractRepository[Sala]):
         result = self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    def list(self, skip: int = 0, limit: int = 10) -> list[Sala]:
+    def get_all(self, skip: int = 0, limit: int = 10) -> list[Sala]:
         """Lista todas las salas."""
         stmt = select(Sala).offset(skip).limit(limit)
         result = self.db.execute(stmt)
