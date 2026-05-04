@@ -1,5 +1,5 @@
 from sqlalchemy import Column, ForeignKey, Table
-from cinepachobackend.app.infrastructure.models.base import Base
+from app.infrastructure.models.base import Base
 
 rol_permiso = Table(
     "rol_permiso",

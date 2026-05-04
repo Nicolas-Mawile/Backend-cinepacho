@@ -4,7 +4,7 @@ from sqlalchemy.orm import relationship
 from .base import Base
 
 class Sala(Base):
-    __tablename__ = "Salas"
+    __tablename__ = "salas"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     numero = Column(Integer, nullable=False, unique=True)

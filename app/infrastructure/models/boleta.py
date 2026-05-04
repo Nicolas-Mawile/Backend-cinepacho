@@ -6,12 +6,12 @@ from sqlalchemy.orm import relationship
 class Boleta(Base):
     __tablename__ = "boletas"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    
+    id = Column(Integer, primary_key=True, autoincrement=True)    
     funcionId = Column(Integer, ForeignKey("funciones.id"), nullable=False)
     sillaId = Column(Integer, ForeignKey("sillas.id"), nullable=False)
 
     funcion = relationship("Funcion", back_populates="boletas")
     silla = relationship("Silla")
 
-    detalle = relationship("DetalleBoleta", back_populates="boleta", uselist=False)
+    detalle = relationship("DetalleFactura", back_populates="boleta", uselist=False)
+

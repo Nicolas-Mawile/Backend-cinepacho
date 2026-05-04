@@ -1,5 +1,5 @@
 from sqlalchemy import Column, ForeignKey, Integer
-from cinepachobackend.app.infrastructure.models.base import Base
+from app.infrastructure.models.base import Base
 from sqlalchemy.orm import relationship
 
 class DetalleFactura(Base):

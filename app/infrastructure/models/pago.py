@@ -1,7 +1,6 @@
 """Pago model."""
-from sqlalchemy import Column, DateTime, Integer, ForeignKey, Float, String
+from sqlalchemy import Column, DateTime, Integer, ForeignKey, Float, String, Enum
 from .base import Base
-from enum import Enum
 from .EstadoPagoEnum import EstadoPagoEnum
 from sqlalchemy.orm import relationship
 

@@ -1,7 +1,7 @@
 """Cliente model."""
 
 from sqlalchemy import Column, ForeignKey, Integer, String
-from cinepachobackend.app.infrastructure.models.persona import Persona
+from app.infrastructure.models.persona import Persona
 from sqlalchemy.orm import relationship
 
 class Cliente(Persona):
@@ -9,8 +9,9 @@ class Cliente(Persona):
     id = Column(Integer, ForeignKey('personas.id'), primary_key=True)
     puntaje = Column(Integer, nullable=False, default=0)
 
-    usuario = relationship("Usuario", back_populates="cliente", uselist=False, nullable=True)
-
     __mapper_args__ = {
         'polymorphic_identity': 'cliente'
     }
+
+    evaluaciones = relationship("Evaluacion", back_populates="cliente")
+    facturas = relationship("Factura", back_populates="cliente")

@@ -1,12 +1,68 @@
-**Edit a file, create a new file, and clone from Bitbucket in under 2 minutes**
+# 🎬 Cinepacho Backend
 
-When you're done, you can delete the content in this README and update the file with details for others getting started with your repository.
+Backend para el sistema de gestión de cines **Cinepacho**, construido con **FastAPI**, **SQLAlchemy**, y **SQLite/PostgreSQL**.
 
-*We recommend that you open this README in another tab as you perform the tasks below. You can [watch our video](https://youtu.be/0ocf7u76WSo) for a full demo of all the steps in this tutorial. Open the video in a new tab to avoid leaving Bitbucket.*
+## 📋 Requisitos
 
----
+- Python 3.10+
+- pip
+- Git
 
-## Edit a file
+## 🚀 Guía Rápida de Inicio
+
+### 1. Clonar e instalar
+```bash
+cd cinepachobackend
+python -m venv venv
+# Windows: venv\Scripts\activate
+# Linux/Mac: source venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 2. Ejecutar la aplicación
+```bash
+python run.py
+```
+
+Accede a: **http://localhost:8000/docs**
+
+## 📚 Documentación
+
+| Recurso | URL |
+|---------|-----|
+| Swagger UI | http://localhost:8000/docs |
+| ReDoc | http://localhost:8000/redoc |
+| Health Check | http://localhost:8000/health |
+
+## 🔑 Variables de Entorno (.env)
+
+```
+DATABASE_URL=sqlite+aiosqlite:///./cinepacho.db
+SECRET_KEY=tu-clave-secreta
+DEBUG=True
+```
+
+## 📁 Estructura
+
+```
+app/
+├── api/              # Controllers
+├── domain/           # Servicios de negocio
+├── infrastructure/   # Repositorios
+└── models/          # Entidades ORM
+```
+
+## 🧪 Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest tests/ -v
+```
+
+## 📝 Licencia
+
+MIT
+
 
 You’ll start by editing this README file to learn how to edit a file in Bitbucket.
 

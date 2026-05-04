@@ -4,7 +4,7 @@ from .base import Base
 from sqlalchemy.orm import relationship
 
 class Pelicula(Base):
-    __tablename__ = "Peliculas"
+    __tablename__ = "peliculas"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     

@@ -1,5 +1,15 @@
-"""Multiplex domain service."""
+from sqlalchemy.orm import Session
+from app.infrastructure.repositories.multiplex_repository import MultiplexRepository
 
-
-def gestionar_multiplex():
-    raise NotImplementedError
+def generar_codigo(nombre: str, repo: MultiplexRepository) -> str:
+    """
+    Genera código de 3 letras a partir del nombre.
+    Si ya existe, agrega un número: TIT → TIT2 → TIT3
+    """
+    base = nombre[:3].upper().replace(" ", "")
+    codigo = base
+    sufijo = 2
+    while repo.buscar_por_codigo(codigo) is not None:
+        codigo = f"{base}{sufijo}"
+        sufijo += 1
+    return codigo

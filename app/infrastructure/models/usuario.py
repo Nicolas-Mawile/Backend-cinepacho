@@ -1,6 +1,6 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
 
-from cinepachobackend.app.infrastructure.models.base import Base, TimestampMixin
+from app.infrastructure.models.base import Base, TimestampMixin
 from sqlalchemy.orm import relationship
 
 class Usuario(Base, TimestampMixin):
@@ -10,7 +10,7 @@ class Usuario(Base, TimestampMixin):
     password = Column(String, nullable=False)
     estaActivo = Column(Boolean, nullable=False, default=True)
 
-    persona_id = Column(Integer, ForeignKey("persona.id"), unique=True)
+    persona_id = Column(Integer, ForeignKey("personas.id"), unique=True)
     persona = relationship("Persona")
 
     rol_id = Column(Integer, ForeignKey("rol.id"))
