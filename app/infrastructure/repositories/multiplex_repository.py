@@ -23,7 +23,7 @@ class MultiplexRepository(AbstractRepository[Multiplex]):
         result = self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    def list(self, skip: int = 0, limit: int = 10, ciudad: str = None, activo: bool = None) -> list[Multiplex]:
+    def get_all(self, skip: int = 0, limit: int = 10, ciudad: str = None, activo: bool = None) -> list[Multiplex]:
         """Lista multiplexes con filtros opcionales."""
         stmt = select(Multiplex)
         
@@ -107,8 +107,8 @@ class MultiplexRepository(AbstractRepository[Multiplex]):
         return self.add(entity)
 
     def listar(self, skip: int = 0, limite: int = 10, ciudad: Optional[str] = None, activo: Optional[bool] = None) -> list[Multiplex]:
-        """Alias de list() con parámetro ciudad."""
-        return self.list(skip, limite, ciudad, activo)
+        """Alias de get_all() con parámetro ciudad."""
+        return self.get_all(skip, limite, ciudad, activo)
 
     def buscar_por_codigo(self, codigo: str) -> Multiplex | None:
         """Busca un multiplex por su código."""

@@ -52,7 +52,7 @@ class AbstractRepository(ABC, Generic[T]):
         pass
     
     @abstractmethod
-    def list(self, skip: int = 0, limit: int = 10) -> List[T]:
+    def get_all(self, skip: int = 0, limit: int = 10) -> List[T]:
         """
         Lista todas las entidades con paginación.
         
