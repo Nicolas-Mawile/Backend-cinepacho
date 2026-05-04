@@ -74,11 +74,28 @@ class MultiplexRepository(AbstractRepository[Multiplex]):
 
     # Métodos específicos del negocio
     def tiene_dependencias(self, multiplex_id: int | str) -> bool:
-        """Verifica si el multiplex tiene salas."""
+        """Verifica si el multiplex tiene salas (legacy)."""
         multiplex_id_int = int(multiplex_id) if isinstance(multiplex_id, str) else multiplex_id
         stmt = select(func.count(Sala.id)).where(Sala.multiplexId == multiplex_id_int)
         count = self.db.scalar(stmt)
         return count > 0
+
+    def tiene_sillas(self, multiplex_id: int | str) -> bool:
+        """Verifica si el multiplex tiene sillas."""
+        multiplex_id_int = int(multiplex_id) if isinstance(multiplex_id, str) else multiplex_id
+        
+        # Contar sillas a través de salas
+        stmt = select(func.count()).select_from(Sala).join(
+            lambda: select(1).where(Sala.multiplexId == multiplex_id_int)
+        )
+        
+        # Alternativa más simple: usar subquery
+        from app.infrastructure.models.silla import Silla
+        stmt = select(func.count(Silla.id)).join(Sala).where(
+            Sala.multiplexId == multiplex_id_int
+        )
+        count = self.db.scalar(stmt)
+        return count and count > 0
 
     def desactivar(self, multiplex_id: int | str) -> Multiplex | None:
         """Desactiva un multiplex."""

@@ -6,8 +6,7 @@ from sqlalchemy.orm import relationship
 class Boleta(Base):
     __tablename__ = "boletas"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    
+    id = Column(Integer, primary_key=True, autoincrement=True)    
     funcionId = Column(Integer, ForeignKey("funciones.id"), nullable=False)
     sillaId = Column(Integer, ForeignKey("sillas.id"), nullable=False)
 
@@ -15,3 +14,4 @@ class Boleta(Base):
     silla = relationship("Silla")
 
     detalle = relationship("DetalleFactura", back_populates="boleta", uselist=False)
+
