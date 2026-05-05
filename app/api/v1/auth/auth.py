@@ -1,10 +1,12 @@
 """Authentication endpoints."""
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.schemas.auth import RegistroRequest, AuthResponse
 from app.infrastructure.repositories.cliente_repository import ClienteRepository
 from app.domain.services.auth_service import AuthService
+from app.infrastructure.email import enviar_bienvenida
 from app.database import get_db
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -39,6 +41,11 @@ def registro(
     # 3. Generar token
     access_token = auth_service.create_access_token(
         data={"sub": str(nuevo_cliente.id), "email": nuevo_cliente.correo}
+    )
+    
+    # 4. Enviar correo de bienvenida (asíncrono)
+    asyncio.create_task(
+        asyncio.to_thread(enviar_bienvenida, nuevo_cliente.nombre_completo, nuevo_cliente.correo)
     )
     
     return {
