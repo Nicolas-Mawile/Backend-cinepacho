@@ -110,14 +110,52 @@ def test_actualizar_empleado(db_session, test_multiplex):
     assert response.json()["empleado"]["cargo"] == "director"
     assert float(response.json()["empleado"]["salario"]) == 2000
 
-def test_deshabilitar_empleado(db_session, test_multiplex):
+def test_crear_empleado_con_codigo_y_usuario(db_session, test_multiplex):
+    # Crear roles necesarios
+    from app.infrastructure.models.rol import Rol
+    db_session.add(Rol(id=1, nombre="Administrador Multiplex"))
+    db_session.add(Rol(id=2, nombre="Cajero"))
+    db_session.commit()
+
     payload = {
-        "primer_nombre": "Delete",
-        "primer_apellido": "Me",
-        "cedula_ciudadania": "000",
+        "primer_nombre": "Carlos",
+        "segundo_nombre": "Arturo",
+        "primer_apellido": "Gomez",
+        "segundo_apellido": "Perez",
+        "cedula_ciudadania": "12345678",
         "fecha_nacimiento": "1990-01-01",
-        "telefono": "000",
-        "email": "000@ex.com",
+        "telefono": "3001234567",
+        "email": "carlos@example.com",
+        "cargo": "cajero",
+        "salario": 1500000,
+        "multiplex_id": test_multiplex.id
+    }
+    response = client.post("/api/v1/empleados", json=payload)
+    
+    assert response.status_code == 201
+    emp_id = response.json()["empleado"]["id"]
+    
+    # Verificar detalle y código autogenerado
+    detail = client.get(f"/api/v1/empleados/{emp_id}")
+    assert detail.status_code == 200
+    assert detail.json()["codigo_empleado"].startswith(f"CP-{test_multiplex.codigo}")
+    
+    # Verificar que se creó el usuario
+    from app.infrastructure.models.usuario import Usuario
+    from sqlalchemy import select
+    stmt = select(Usuario).where(Usuario.persona_id == emp_id)
+    usuario = db_session.execute(stmt).scalar_one_or_none()
+    assert usuario is not None
+    assert usuario.rol.nombre == "Cajero"
+
+def test_desactivar_empleado_patch(db_session, test_multiplex):
+    payload = {
+        "primer_nombre": "Patch",
+        "primer_apellido": "Me",
+        "cedula_ciudadania": "111222",
+        "fecha_nacimiento": "1990-01-01",
+        "telefono": "111",
+        "email": "patch@ex.com",
         "cargo": "aseador",
         "salario": 1000,
         "multiplex_id": test_multiplex.id
@@ -125,10 +163,8 @@ def test_deshabilitar_empleado(db_session, test_multiplex):
     create_resp = client.post("/api/v1/empleados", json=payload)
     emp_id = create_resp.json()["empleado"]["id"]
     
-    response = client.delete(f"/api/v1/empleados/{emp_id}")
+    response = client.patch(f"/api/v1/empleados/{emp_id}/desactivar")
     assert response.status_code == 200
-    assert response.json() == {"message": "ok"}
     
-    # Verificar que está inactivo
     detail = client.get(f"/api/v1/empleados/{emp_id}")
     assert detail.json()["estado"] == "inactivo"

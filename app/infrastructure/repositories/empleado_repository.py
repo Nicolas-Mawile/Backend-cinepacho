@@ -73,3 +73,9 @@ class EmpleadoRepository(AbstractRepository[Empleado]):
         stmt = select(Empleado).where(Empleado.cedula == cedula)
         result = self.db.execute(stmt)
         return result.scalar_one_or_none()
+
+    def obtener_ultimo_secuencial(self, multiplex_id: int) -> int:
+        """Obtiene el último número secuencial de empleado para un multiplex."""
+        stmt = select(func.count(Empleado.id)).where(Empleado.multiplex_id == multiplex_id)
+        count = self.db.scalar(stmt) or 0
+        return count

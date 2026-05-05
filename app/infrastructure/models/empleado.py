@@ -11,6 +11,7 @@ class Empleado(Persona):
 
     cedula = Column(String, unique=True, nullable=False)
     nombre_completo = Column(String, nullable=False)
+    codigo_empleado = Column(String, unique=True, nullable=True)
     fecha_inicio_contrato = Column(Date, nullable=False)
     salario = Column(Numeric(12, 2), nullable=False)
     cargo = Column(Enum(CargoEnum), nullable=False)
