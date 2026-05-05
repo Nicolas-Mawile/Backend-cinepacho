@@ -33,7 +33,7 @@ class EmpleadoService:
         mx_code = multiplex.codigo if multiplex else "XX"
         
         # Generar código secuencial
-        seq = repo.obtener_ultimo_secuencial(datos.get("multiplex_id")) + 1
+        seq = repo.siguiente_numero_secuencia(datos.get("multiplex_id"))
         codigo_empleado = self.generar_codigo_empleado(mx_code, seq)
         
         # Generar correo laboral
@@ -53,6 +53,7 @@ class EmpleadoService:
             "cedula": str(datos.get("cedula_ciudadania")),
             "nombre_completo": nombre_completo,
             "codigo_empleado": codigo_empleado,
+            "seq": seq,
             "fecha_inicio_contrato": datos.get("fecha_inicio_contrato") or datos.get("fecha_nacimiento"),
             "salario": datos.get("salario"),
             "cargo": datos.get("cargo"),

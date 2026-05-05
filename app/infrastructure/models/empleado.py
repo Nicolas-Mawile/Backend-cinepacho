@@ -16,6 +16,7 @@ class Empleado(Persona):
     salario = Column(Numeric(12, 2), nullable=False)
     cargo = Column(Enum(CargoEnum), nullable=False)
     activo = Column(Boolean, default=True)
+    seq = Column(Integer, default=0) # Secuencial por multiplex
     multiplex_id = Column(Integer, ForeignKey("multiplex.id"), nullable=True)
     correo_laboral = Column(String, unique=True, nullable=True)
     

@@ -9,6 +9,7 @@ from app.api.schemas.empleado import (
     EmpleadoCreate, EmpleadoUpdate, EmpleadoResponse, 
     EmpleadoDetalle, EmpleadoPaginated
 )
+from app.infrastructure.models.cargoEnum import CargoEnum
 from app.infrastructure.repositories.empleado_repository import EmpleadoRepository
 from app.domain.services.empleado_service import EmpleadoService
 from app.database import get_db
@@ -57,22 +58,15 @@ def listar_empleados(
     repo: EmpleadoRepository = Depends(get_empleado_repository)
 ):
     """Lista empleados con paginación y filtros de multiplex, cargo y estado."""
-    skip = (page - 1) * limit
-    
-    # Ajustar repositorio para soportar estos filtros si es necesario, 
-    # por ahora simulamos el filtrado en el repositorio o lo extendemos.
-    # Para cumplir con DoD "Admin_mx solo ve empleados de su multiplex", 
-    # se asume que multiplex_id vendrá filtrado desde el frontend o un middleware de auth.
-    
-    # Modificamos repo.get_all y repo.count para aceptar más filtros
-    total = repo.count(multiplex_id=multiplex_id)
-    empleados = repo.get_all(skip=skip, limit=limit, multiplex_id=multiplex_id)
-    
-    # Filtrado adicional manual si el repo no lo soporta (idealmente mover al repo)
-    if cargo:
-        empleados = [e for e in empleados if e.cargo == cargo]
-    if activo is not None:
-        empleados = [e for e in empleados if e.activo == activo]
+    # Usar el nuevo método listar del repositorio que ya maneja filtros y paginación
+    total = repo.count(multiplex_id=multiplex_id, cargo=cargo, activo=activo)
+    empleados = repo.listar(
+        multiplex_id=multiplex_id, 
+        cargo=cargo, 
+        activo=activo, 
+        pagina=page, 
+        limite=limit
+    )
 
     # Mapear a formato de lista del contrato
     data = []
