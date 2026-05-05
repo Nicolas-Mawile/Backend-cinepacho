@@ -1,20 +1,39 @@
 """Database setup and dependency helpers."""
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+
+from sqlalchemy import create_engine, Engine
+from sqlalchemy.orm import sessionmaker, Session
+from typing import Generator
+
 from .config import settings
+from .infrastructure.models.base import Base
 
-engine: AsyncEngine = create_async_engine(settings.database_url, echo=True)
 
-AsyncSessionLocal = sessionmaker(
+# Crear engine síncrono
+engine: Engine = create_engine(
+    settings.database_url,
+    echo=False,
+    pool_pre_ping=True,
+)
+
+# Factory de sesiones síncronas
+SessionLocal = sessionmaker(
     bind=engine,
-    class_=AsyncSession,
+    class_=Session,
     expire_on_commit=False,
 )
 
-async def get_db():
-    async with AsyncSessionLocal() as session:
-        yield session
 
-async def get_local_db():
-    async with AsyncSessionLocal() as session:
-        yield session
+def init_db():
+    """Inicializa las tablas en la base de datos."""
+    Base.metadata.create_all(bind=engine)
+
+
+def get_db() -> Generator[Session, None, None]:
+    """Dependencia para obtener sesión de BD en endpoints."""
+    with SessionLocal() as session:
+        try:
+            yield session
+        except Exception:
+            session.rollback()
+            raise
+

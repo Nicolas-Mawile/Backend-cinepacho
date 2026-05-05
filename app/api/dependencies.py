@@ -58,6 +58,11 @@ async def get_current_admin_general(user=Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Se requiere rol ADMIN-GENERAL")
     return user
 
+def require_rol(role: str):
+    def check_rol(current_user=Depends(get_current_user)):
+        return current_user
+    return check_rol
+
 def require_role(roles_permitidos: List[str]):
     async def checker(user=Depends(get_current_user)):
         rol = "CLIENTE" if isinstance(user, Cliente) else user.rol
@@ -73,3 +78,8 @@ def require_permiso(permiso: str):
             raise HTTPException(status_code=403, detail=f"Permiso requerido: {permiso}")
         return user
     return checker
+
+def require_multiplex(multiplex_id: int):
+    def check_multiplex(current_user=Depends(get_current_user)):
+        return current_user
+    return check_multiplex

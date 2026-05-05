@@ -1,5 +1,6 @@
 """Pytest fixtures for Cinepacho tests."""
 import pytest
+import app.infrastructure.models
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from datetime import datetime, timezone
@@ -10,6 +11,9 @@ from app.models.base import Base
 from app.models.cliente import Cliente
 from app.database import get_db
 from passlib.context import CryptContext
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+from app.infrastructure.models.base import Base
 
 DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -68,3 +72,23 @@ async def http_client(db_session):
     ) as client:
         yield client
     app.dependency_overrides.clear()
+
+    
+@pytest.fixture
+def db_session():
+    """BD síncrona en memoria para tests."""
+    engine = create_engine("sqlite:///:memory:")
+
+    Base.metadata.create_all(bind=engine)
+
+    SessionLocal = sessionmaker(
+        bind=engine,
+        class_=Session,
+        expire_on_commit=False,
+    )
+
+    with SessionLocal() as session:
+        yield session
+
+    Base.metadata.drop_all(bind=engine)
+    engine.dispose()
