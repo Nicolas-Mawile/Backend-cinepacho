@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     
     # CORS
-    cors_origins: list = ["http://localhost:3000", "http://localhost:5173"]
+    cors_origins: str = '["http://localhost:3000", "http://localhost:5173"]'
     
     # Email (SMTP)
     smtp_server: Optional[str] = None
