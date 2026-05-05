@@ -10,19 +10,19 @@ from app.models.cliente import Cliente
 
 @pytest.mark.asyncio
 async def test_admin_general_accede_correctamente():
-    empleado = Empleado(id=1, cargo="admin_general", activo=True)
+    empleado = Empleado(id=1, rol="ADMIN-GENERAL", activo=True)
     result = await get_current_admin_general(user=empleado)
-    assert result.cargo == "admin_general"
+    assert result.rol == "ADMIN-GENERAL"
 
 @pytest.mark.asyncio
 async def test_cajero_accede_correctamente():
-    empleado = Empleado(id=2, cargo="cajero", activo=True)
+    empleado = Empleado(id=2, rol="EMPLEADO-CAJERO", activo=True)
     result = await get_current_cajero(user=empleado)
-    assert result.cargo == "cajero"
+    assert result.rol == "EMPLEADO-CAJERO"
 
 @pytest.mark.asyncio
 async def test_cajero_no_puede_ser_admin():
-    empleado = Empleado(id=2, cargo="cajero", activo=True)
+    empleado = Empleado(id=2, rol="EMPLEADO-CAJERO", activo=True)
     with pytest.raises(HTTPException) as exc:
         await get_current_admin_general(user=empleado)
     assert exc.value.status_code == 403
@@ -36,7 +36,7 @@ async def test_cliente_no_puede_acceder_a_endpoint_empleado():
 
 @pytest.mark.asyncio
 async def test_admin_mx_no_puede_ser_admin_general():
-    empleado = Empleado(id=3, cargo="admin_multiplex", activo=True)
+    empleado = Empleado(id=3, rol="ADMIN-MULTIPLEX", activo=True)
     with pytest.raises(HTTPException) as exc:
         await get_current_admin_general(user=empleado)
     assert exc.value.status_code == 403

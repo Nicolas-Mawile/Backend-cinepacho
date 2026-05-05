@@ -22,7 +22,7 @@ async def test_cliente_en_endpoint_admin_lanza_403():
 
 @pytest.mark.asyncio
 async def test_get_current_cliente_con_empleado_lanza_403():
-    empleado = Empleado(id=1, nombre="Emp", correo="emp@mail.com", cargo="cajero")
+    empleado = Empleado(id=1, nombre="Emp", correo="emp@mail.com", rol="EMPLEADO-CAJERO")
     with pytest.raises(HTTPException) as exc:
         await get_current_cliente(user=empleado)
     assert exc.value.status_code == 403

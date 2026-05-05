@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from jose import jwt, JWTError
+from app.domain.roles import get_permisos
 from app.infrastructure.repositories.cliente_repository import ClienteRepository
 from app.infrastructure.repositories.refresh_token_repository import RefreshTokenRepository
 from app.domain.services.auth_service import authenticate_user, crear_token
@@ -11,6 +12,7 @@ from app.database import get_db
 from app.config import settings
 from datetime import timedelta
 from app.domain.services.auth_service import authenticate_empleado
+from app.models.cliente import Cliente
 
 router = APIRouter()
 
@@ -69,4 +71,11 @@ async def registro():
 
 @router.get("/me")
 async def me(user=Depends(get_current_user)):
-    return {"id": user.id, "correo": user.correo}
+    rol = "CLIENTE" if isinstance(user, Cliente) else user.rol
+    return {
+        "id": user.id,
+        "correo": user.correo,
+        "nombre": user.nombre,
+        "rol": rol,
+        "permisos": get_permisos(rol)
+    }
