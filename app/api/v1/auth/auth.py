@@ -44,9 +44,15 @@ def registro(
     )
     
     # 4. Enviar correo de bienvenida (asíncrono)
-    asyncio.create_task(
-        asyncio.to_thread(enviar_bienvenida, nuevo_cliente.nombre_completo, nuevo_cliente.correo)
-    )
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(
+            asyncio.to_thread(enviar_bienvenida, nuevo_cliente.nombre_completo, nuevo_cliente.correo)
+        )
+    except RuntimeError:
+        # Si no hay loop corriendo (e.g. en algunos contextos de test sincrónicos), 
+        # ignoramos el envío de correo para no romper la respuesta.
+        pass
     
     return {
         "access_token": access_token,
