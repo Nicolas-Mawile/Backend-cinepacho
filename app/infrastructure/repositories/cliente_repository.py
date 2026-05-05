@@ -1,6 +1,7 @@
 """Cliente repository."""
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
+from datetime import datetime, timedelta, timezone
 from app.infrastructure.models.cliente import Cliente
 from ..base_repository import AbstractRepository
 
@@ -12,6 +13,7 @@ class ClienteRepository(AbstractRepository[Cliente]):
         """Agrega un nuevo cliente."""
         self.db.add(entity)
         self.db.commit()
+        self.db.refresh(entity)
         return entity
 
     def get(self, entity_id: int) -> Cliente | None:
@@ -36,6 +38,7 @@ class ClienteRepository(AbstractRepository[Cliente]):
             setattr(entity, key, value)
         
         self.db.commit()
+        self.db.refresh(entity)
         return entity
 
     def delete(self, entity_id: int) -> bool:
@@ -54,14 +57,79 @@ class ClienteRepository(AbstractRepository[Cliente]):
         result = self.db.scalar(stmt)
         return result > 0
 
-    def existe_correo(self, correo: str) -> bool:
-        """Verifica si ya existe un cliente con ese correo."""
-        stmt = select(func.count()).where(Cliente.correo == correo)
-        result = self.db.scalar(stmt)
-        return result > 0
+    # Métodos específicos de la tarea ST-03
+
+    def crear(self, datos_cliente: dict) -> Cliente:
+        """Crea un cliente a partir de un diccionario."""
+        nuevo_cliente = Cliente(**datos_cliente)
+        return self.add(nuevo_cliente)
 
     def buscar_por_correo(self, correo: str) -> Cliente | None:
         """Busca un cliente por su correo electrónico."""
         stmt = select(Cliente).where(Cliente.correo == correo)
         result = self.db.execute(stmt)
         return result.scalar_one_or_none()
+
+    def buscar_por_id(self, entity_id: int) -> Cliente | None:
+        """Alias de get() para cumplir con la interfaz solicitada."""
+        return self.get(entity_id)
+
+    def existe_correo(self, correo: str) -> bool:
+        """Verifica si ya existe un cliente con ese correo."""
+        stmt = select(func.count()).where(Cliente.correo == correo)
+        result = self.db.scalar(stmt)
+        return result > 0
+
+    def actualizar_puntos(self, entity_id: int, delta_puntos: int) -> Cliente:
+        """Actualiza los puntos acumulados de un cliente."""
+        entity = self.get(entity_id)
+        if not entity:
+            raise ValueError(f"Cliente con id {entity_id} no encontrado")
+        
+        entity.puntos_acumulados += delta_puntos
+        self.db.commit()
+        self.db.refresh(entity)
+        return entity
+
+    def registrar_intento_fallido(self, correo: str):
+        """Registra un intento fallido y bloquea si excede el límite (5)."""
+        cliente = self.buscar_por_correo(correo)
+        if not cliente:
+            return
+        
+        cliente.intentos_fallidos += 1
+        if cliente.intentos_fallidos >= 5:
+            # Bloqueo por 15 minutos
+            cliente.bloqueado_hasta = datetime.now(timezone.utc) + timedelta(minutes=15)
+        
+        self.db.commit()
+
+    def reset_intentos(self, correo: str):
+        """Reinicia el contador de intentos fallidos."""
+        cliente = self.buscar_por_correo(correo)
+        if not cliente:
+            return
+        
+        cliente.intentos_fallidos = 0
+        cliente.bloqueado_hasta = None
+        self.db.commit()
+
+    def verificar_bloqueo(self, correo: str) -> bool:
+        """Verifica si el cliente está actualmente bloqueado."""
+        cliente = self.buscar_por_correo(correo)
+        if not cliente or not cliente.bloqueado_hasta:
+            return False
+        
+        # Aseguramos que bloqueado_hasta sea aware si es necesario
+        bloqueado_hasta = cliente.bloqueado_hasta
+        if bloqueado_hasta.tzinfo is None:
+            bloqueado_hasta = bloqueado_hasta.replace(tzinfo=timezone.utc)
+            
+        ahora = datetime.now(timezone.utc)
+        
+        if ahora < bloqueado_hasta:
+            return True
+        
+        # Si el tiempo ya pasó, desbloqueamos automáticamente
+        self.reset_intentos(correo)
+        return False

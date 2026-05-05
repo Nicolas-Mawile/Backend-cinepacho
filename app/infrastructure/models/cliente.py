@@ -15,6 +15,8 @@ class Cliente(Base):
     activo = Column(Boolean, default=True)
     puntos_acumulados = Column(Integer, default=0)
     idioma_preferido = Column(String, default="es")
+    intentos_fallidos = Column(Integer, default=0)
+    bloqueado_hasta = Column(DateTime, nullable=True)
 
     evaluaciones = relationship("Evaluacion", back_populates="cliente")
     facturas = relationship("Factura", back_populates="cliente")
