@@ -1,6 +1,9 @@
 from enum import Enum
 
 class CargoEnum(Enum):
-    administradorGeneral = "Administrador General"
-    cajero = "Cajero"
-    administradorMultiplex = "Administrador Multiplex"
+    director = "director"
+    cajero = "cajero"
+    despachador_comida = "despachador_comida"
+    encargado_sala = "encargado_sala"
+    aseador = "aseador"
+    administrador = "administrador" # Para compatibilidad con contrato POST /empleados
