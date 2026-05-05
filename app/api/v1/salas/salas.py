@@ -160,8 +160,12 @@ def actualizar_sala(
     try:
         sala = service.actualizar_sala(sala_id, datos)
         return sala
-    except (SalaNotFoundError, DuplicateNumeroSalaError) as e:
-        handle_domain_error(e)
+
+    except SalaNotFoundError:
+        raise HTTPException(status_code=404, detail="Sala no encontrada")
+
+    except SalaConfigurationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.delete(

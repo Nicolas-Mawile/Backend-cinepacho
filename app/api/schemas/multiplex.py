@@ -1,8 +1,10 @@
-from typing import Optional
+from typing import List, Optional
 import uuid
 from decimal import Decimal
 from datetime import datetime
 from pydantic import BaseModel, Field
+
+from .sala import SalaSimpleResponse
 
 class MultiplexCreate(BaseModel):
     nombre: str = Field(..., min_length=3, max_length=150)
@@ -30,6 +32,8 @@ class MultiplexResponse(BaseModel):
     activo: bool = Field(alias="estaActivo")
 
     cantidad_salas: int = 0
+
+    salas :List[SalaSimpleResponse] = []
 
     model_config = {
         "from_attributes": True,

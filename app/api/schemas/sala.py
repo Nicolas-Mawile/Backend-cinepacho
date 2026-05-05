@@ -117,3 +117,12 @@ class SalaResponse(BaseModel):
             }
         }
     }
+
+class SalaSimpleResponse(BaseModel):
+    """Schema de respuesta simple para una sala (sin sillas)."""
+    id: int
+    numero: int
+
+    model_config = {
+        "from_attributes": True
+    }

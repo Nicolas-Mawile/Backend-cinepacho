@@ -1,9 +1,10 @@
 """Sala repository."""
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import selectinload
 from sqlalchemy import select, func
 
 from app.infrastructure.models.sala import Sala
+from app.infrastructure.models.silla import Silla
 from ..base_repository import AbstractRepository
 
 
@@ -19,6 +20,15 @@ class SalaRepository(AbstractRepository[Sala]):
     def get(self, entity_id: int) -> Sala | None:
         """Obtiene sala por ID."""
         stmt = select(Sala).where(Sala.id == entity_id)
+        result = self.db.execute(stmt)
+        return result.scalar_one_or_none()
+    
+    def get_with_sillas(self, entity_id: int) -> Sala | None:
+        stmt = (
+            select(Sala)
+            .options(selectinload(Sala.sillas).selectinload(Silla.tipoSilla))
+            .where(Sala.id == entity_id)
+        )
         result = self.db.execute(stmt)
         return result.scalar_one_or_none()
 
