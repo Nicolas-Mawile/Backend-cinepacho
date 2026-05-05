@@ -1,41 +1,41 @@
 """Pytest fixtures for Cinepacho tests."""
 import pytest
-import app.infrastructure.models
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from datetime import datetime, timezone
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 from app.main import app
 from app.models.base import Base
 from app.models.cliente import Cliente
+from app.models.multiplex import Multiplex
+from app.models.empleado import Empleado
+from app.models.refrescar_token import RefreshToken
+from app.models.cliente import Cliente
+from app.models.multiplex import Multiplex
+from app.models.empleado import Empleado
+from app.models.refrescar_token import RefreshToken
 from app.database import get_db
 from passlib.context import CryptContext
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-from app.infrastructure.models.base import Base
 
-DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-engine = create_async_engine(DATABASE_URL, echo=False)
-TestingSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+engine = create_engine("sqlite:///:memory:", echo=False)
+TestingSessionLocal = sessionmaker(bind=engine, class_=Session, expire_on_commit=False)
 
-@pytest_asyncio.fixture(autouse=True)
-async def setup_db():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+@pytest.fixture(autouse=True)
+def setup_db():
+    Base.metadata.create_all(bind=engine)
     yield
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    Base.metadata.drop_all(bind=engine)
 
-@pytest_asyncio.fixture
-async def db_session():
-    async with TestingSessionLocal() as session:
+@pytest.fixture
+def db_session():
+    with TestingSessionLocal() as session:
         yield session
 
-@pytest_asyncio.fixture
-async def cliente_normal(db_session):
+@pytest.fixture
+def cliente_normal(db_session):
     cliente = Cliente(
         nombre="Test User",
         correo="test@example.com",
@@ -43,13 +43,12 @@ async def cliente_normal(db_session):
         intentos_fallidos=0,
     )
     db_session.add(cliente)
-    await db_session.commit()
-    await db_session.refresh(cliente)
+    db_session.commit()
+    db_session.refresh(cliente)
     return cliente
 
-@pytest_asyncio.fixture
-async def cliente_bloqueado(db_session):
-    from datetime import datetime
+@pytest.fixture
+def cliente_bloqueado(db_session):
     cliente = Cliente(
         nombre="Bloqueado User",
         correo="bloqueado@example.com",
@@ -58,13 +57,13 @@ async def cliente_bloqueado(db_session):
         ultimo_intento=datetime.now(timezone.utc),
     )
     db_session.add(cliente)
-    await db_session.commit()
-    await db_session.refresh(cliente)
+    db_session.commit()
+    db_session.refresh(cliente)
     return cliente
 
 @pytest_asyncio.fixture
 async def http_client(db_session):
-    async def override_get_db():
+    def override_get_db():
         yield db_session
     app.dependency_overrides[get_db] = override_get_db
     async with AsyncClient(
@@ -72,23 +71,3 @@ async def http_client(db_session):
     ) as client:
         yield client
     app.dependency_overrides.clear()
-
-    
-@pytest.fixture
-def db_session():
-    """BD síncrona en memoria para tests."""
-    engine = create_engine("sqlite:///:memory:")
-
-    Base.metadata.create_all(bind=engine)
-
-    SessionLocal = sessionmaker(
-        bind=engine,
-        class_=Session,
-        expire_on_commit=False,
-    )
-
-    with SessionLocal() as session:
-        yield session
-
-    Base.metadata.drop_all(bind=engine)
-    engine.dispose()

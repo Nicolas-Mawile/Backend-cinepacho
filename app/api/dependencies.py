@@ -2,7 +2,7 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from sqlalchemy import select
 from typing import List
 from app.config import settings
@@ -15,7 +15,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/login")
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
+    db: Session = Depends(get_db)
 ):
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
@@ -28,10 +28,10 @@ async def get_current_user(
 
     kind: str = payload.get("kind", "cliente")
     if kind == "cliente":
-        result = await db.execute(select(Cliente).where(Cliente.id == int(subject)))
+        result = db.execute(select(Cliente).where(Cliente.id == int(subject)))
         user = result.scalar_one_or_none()
     else:
-        result = await db.execute(select(Empleado).where(Empleado.id == int(subject)))
+        result = db.execute(select(Empleado).where(Empleado.id == int(subject)))
         user = result.scalar_one_or_none()
 
     if user is None:
