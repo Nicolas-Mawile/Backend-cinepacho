@@ -220,7 +220,73 @@ class SalaService:
         if not sala:
             raise SalaNotFoundError(f"Sala {sala_id} no encontrada")
         return sala
+    
+    def _sync_sillas(
+        self,
+        sala: Sala,
+        sillas_input: list[SillaCreate],
+        capacidad_total: int,
+        capacidad_pref: int
+    ):
+        input_map = {
+            (s.fila_silla, s.columna_silla): s
+            for s in sillas_input
+        }
 
+        if len(input_map) != len(sillas_input):
+            raise SalaConfigurationError("Sillas duplicadas en request")
+
+        total = len(sillas_input)
+        preferenciales = sum(
+            1 for s in sillas_input if s.tipo_silla.lower() == "preferencial"
+        )
+
+        if total != capacidad_total:
+            raise SalaConfigurationError(
+                f"Cantidad de sillas ({total}) no coincide con capacidadTotal ({capacidad_total})"
+            )
+
+        if preferenciales != capacidad_pref:
+            raise SalaConfigurationError(
+                f"Preferenciales ({preferenciales}) no coincide con capacidadPreferencial ({capacidad_pref})"
+            )
+
+        existentes = {
+            (s.fila, s.columna): s
+            for s in sala.sillas
+        }
+
+        tipos_map = self._mapear_tipos()
+
+
+        for key, silla_data in input_map.items():
+
+            tipo = tipos_map.get(silla_data.tipo_silla.lower())
+            if not tipo:
+                raise SalaConfigurationError(
+                    f"Tipo inválido: {silla_data.tipo_silla}"
+                )
+
+            if key in existentes:
+                silla = existentes[key]
+
+                silla.tipoSilla = tipo
+                silla.estaActiva = True
+
+            else:
+                nueva = Silla(
+                    salaId=sala.id,
+                    fila=silla_data.fila_silla,
+                    columna=silla_data.columna_silla,
+                    tipoSilla=tipo,
+                    estaActiva=True
+                )
+                self.db.add(nueva)
+
+        for key, silla in existentes.items():
+            if key not in input_map:
+                silla.estaActiva = False
+                
     def obtener_salas_multiplex(
         self, multiplex_id: int, skip: int = 0, limit: int = 10
     ) -> list[Sala]:
@@ -242,61 +308,32 @@ class SalaService:
         return self.sala_repo.obtener_por_multiplex(multiplex_id, skip, limit)
 
     def actualizar_sala(self, sala_id: int, datos: SalaUpdate) -> Sala:
-        """
-        Actualiza una sala.
-        
-        Args:
-            sala_id: ID de la sala a actualizar
-            datos: Datos a actualizar
-            
-        Returns:
-            Sala: Sala actualizada
-            
-        Raises:
-            SalaNotFoundError: Si la sala no existe
-            DuplicateNumeroSalaError: Si el nuevo número ya existe
-            SalaConfigurationError: Si la configuración de sillas es inconsistente
-        """
-        sala = self.obtener_sala(sala_id)
+        sala = self.sala_repo.get_with_sillas(sala_id)
+
+        if not sala:
+            raise SalaNotFoundError()
 
         if datos.numero is not None:
-            self.validar_numero_unico(datos.numero, sala.multiplexId, excluir_sala_id=sala_id)
+            sala.numero = datos.numero
 
-        actual_total = datos.capacidadTotal if datos.capacidadTotal is not None else sala.capacidadTotal
-        actual_preferencial = (
-            datos.capacidadPreferencial
-            if datos.capacidadPreferencial is not None
-            else sala.capacidadPreferencial
-        )
+        if datos.capacidadTotal is not None:
+            sala.capacidadTotal = datos.capacidadTotal
+
+        if datos.capacidadPreferencial is not None:
+            sala.capacidadPreferencial = datos.capacidadPreferencial
 
         if datos.sillas is not None:
-            preferenciales = sum(
-                1
-                for item in datos.sillas
-                if self._normalizar_tipo_silla(item.tipo_silla) == "Preferencial"
+            self._sync_sillas(
+                sala,
+                datos.sillas,
+                sala.capacidadTotal,
+                sala.capacidadPreferencial
             )
-            if datos.capacidadPreferencial is None:
-                actual_preferencial = preferenciales
-            self._validar_sillas(datos, actual_total, actual_preferencial)
 
-        updates = datos.model_dump(exclude_none=True)
-        sillas_nuevas = updates.pop("sillas", None)
+        self.db.commit()
+        self.db.refresh(sala)
 
-        if sillas_nuevas is not None and "capacidadPreferencial" not in updates:
-            updates["capacidadPreferencial"] = actual_preferencial
-        if sillas_nuevas is not None and "capacidadTotal" not in updates:
-            updates["capacidadTotal"] = actual_total
-
-        sala_actualizada = self.sala_repo.update(sala_id, updates)
-        if not sala_actualizada:
-            raise SalaNotFoundError(f"Sala {sala_id} no encontrada")
-
-        if sillas_nuevas is not None:
-            self.silla_repo.eliminar_por_sala(sala_id)
-            self._crear_sillas_para_sala(sala_actualizada, sillas_nuevas)
-            self.db.refresh(sala_actualizada)
-
-        return sala_actualizada
+        return sala
 
     def eliminar_sala(self, sala_id: int) -> bool:
         """
@@ -375,3 +412,11 @@ class SalaService:
         """
         sala = self.obtener_sala(sala_id)
         return self.sala_repo.update(sala_id, {"estaActiva": activo})
+    
+    def _mapear_tipos(self):
+        from app.infrastructure.models.tipoSilla import TipoSilla
+
+        stmt = select(TipoSilla)
+        tipos = self.db.execute(stmt).scalars().all()
+
+        return {t.nombre.lower(): t for t in tipos}

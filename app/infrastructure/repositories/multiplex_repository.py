@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import selectinload
 from sqlalchemy import select, func
 
 from app.infrastructure.models.multiplex import Multiplex
@@ -25,7 +25,7 @@ class MultiplexRepository(AbstractRepository[Multiplex]):
 
     def get_all(self, skip: int = 0, limit: int = 10, ciudad: str = None, activo: bool = None) -> list[Multiplex]:
         """Lista multiplexes con filtros opcionales."""
-        stmt = select(Multiplex)
+        stmt = select(Multiplex).options(selectinload(Multiplex.salas))
         
         if ciudad:
             stmt = stmt.where(Multiplex.ciudad == ciudad)
