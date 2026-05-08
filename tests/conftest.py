@@ -4,30 +4,36 @@ import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from datetime import datetime, timezone
 from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import Session, sessionmaker
 from app.main import app
-from app.models.base import Base
-from app.models.cliente import Cliente
-from app.models.multiplex import Multiplex
-from app.models.empleado import Empleado
-from app.models.refrescar_token import RefreshToken
-from app.models.cliente import Cliente
-from app.models.multiplex import Multiplex
-from app.models.empleado import Empleado
+from app.infrastructure.models.base import Base as InfraBase
+from app.infrastructure import models as _infra_models
+from app.models.base import Base as LegacyBase
+from app.models.cliente import Cliente as AuthCliente
+from app.models.multiplex import Multiplex as _legacy_multiplex
+from app.models.empleado import Empleado as _legacy_empleado
 from app.models.refrescar_token import RefreshToken
 from app.database import get_db
 from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-engine = create_engine("sqlite:///:memory:", echo=False)
+engine = create_engine(
+    "sqlite://",
+    echo=False,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
 TestingSessionLocal = sessionmaker(bind=engine, class_=Session, expire_on_commit=False)
 
 @pytest.fixture(autouse=True)
 def setup_db():
-    Base.metadata.create_all(bind=engine)
+    InfraBase.metadata.create_all(bind=engine)
+    LegacyBase.metadata.create_all(bind=engine)
     yield
-    Base.metadata.drop_all(bind=engine)
+    LegacyBase.metadata.drop_all(bind=engine)
+    InfraBase.metadata.drop_all(bind=engine)
 
 @pytest.fixture
 def db_session():
@@ -36,7 +42,7 @@ def db_session():
 
 @pytest.fixture
 def cliente_normal(db_session):
-    cliente = Cliente(
+    cliente = AuthCliente(
         nombre="Test User",
         correo="test@example.com",
         password_hash=pwd_context.hash("password123"),
@@ -49,7 +55,7 @@ def cliente_normal(db_session):
 
 @pytest.fixture
 def cliente_bloqueado(db_session):
-    cliente = Cliente(
+    cliente = AuthCliente(
         nombre="Bloqueado User",
         correo="bloqueado@example.com",
         password_hash=pwd_context.hash("password123"),

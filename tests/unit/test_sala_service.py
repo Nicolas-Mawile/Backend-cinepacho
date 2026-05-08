@@ -11,13 +11,11 @@ from app.domain.exceptions import (
     DuplicateNumeroSalaError,
 )
 from app.api.schemas.sala import SalaCreate, SalaUpdate
-from app.database import SessionLocal
 
 
 @pytest.fixture
-def multiplex():
+def multiplex(db_session):
     """Crea un multiplex de prueba."""
-    db = SessionLocal()
     multiplex = Multiplex(
         codigo="TEST",
         nombre="Test Multiplex",
@@ -26,10 +24,9 @@ def multiplex():
         latitud=0.0,
         longitud=0.0,
     )
-    db.add(multiplex)
-    db.commit()
+    db_session.add(multiplex)
+    db_session.commit()
     multiplex_id = multiplex.id
-    db.close()
     return multiplex_id
 
 
@@ -204,22 +201,20 @@ def test_eliminar_sala_no_existe(service):
     assert eliminada is False
 
 
-def test_validar_numero_unico(service):
+def test_validar_numero_unico(service, db_session, multiplex):
     """Test validación de número único."""
     # Crear sala con número 42
-    db = SessionLocal()
-    sala1 = Sala(numero=42, capacidadTotal=100, capacidadPreferencial=10, multiplexId=1)
-    db.add(sala1)
-    db.commit()
+    sala1 = Sala(numero=42, capacidadTotal=100, capacidadPreferencial=10, multiplexId=multiplex)
+    db_session.add(sala1)
+    db_session.commit()
     sala1_id = sala1.id
-    db.close()
     
     # Validar que número 42 no es único
     with pytest.raises(DuplicateNumeroSalaError):
-        service.validar_numero_unico(42)
+        service.validar_numero_unico(42, multiplex)
     
     # Validar que número 42 es único si excluimos sala1
-    service.validar_numero_unico(42, excluir_sala_id=sala1_id)
+    service.validar_numero_unico(42, multiplex, excluir_sala_id=sala1_id)
 
 
 def test_paginacion_salas(service, multiplex):

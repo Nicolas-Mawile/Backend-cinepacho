@@ -2,6 +2,7 @@
 
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.infrastructure.repositories.sala_repository import SalaRepository
 from app.infrastructure.repositories.multiplex_repository import MultiplexRepository
@@ -314,6 +315,7 @@ class SalaService:
             raise SalaNotFoundError()
 
         if datos.numero is not None:
+            self.validar_numero_unico(datos.numero, sala.multiplexId, excluir_sala_id=sala_id)
             sala.numero = datos.numero
 
         if datos.capacidadTotal is not None:
@@ -330,7 +332,13 @@ class SalaService:
                 sala.capacidadPreferencial
             )
 
-        self.db.commit()
+        try:
+            self.db.commit()
+        except IntegrityError as exc:
+            self.db.rollback()
+            raise DuplicateNumeroSalaError(
+                f"El número de sala {sala.numero} ya está en uso en este multiplex"
+            ) from exc
         self.db.refresh(sala)
 
         return sala
@@ -348,7 +356,9 @@ class SalaService:
         Raises:
             SalaDependenciesError: Si la sala tiene sillas o funciones
         """
-        sala = self.obtener_sala(sala_id)
+        sala = self.sala_repo.get(sala_id)
+        if not sala:
+            return False
         self.validar_sin_dependencias(sala_id)
         return self.sala_repo.delete(sala_id)
 
