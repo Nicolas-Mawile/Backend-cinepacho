@@ -5,6 +5,7 @@ from fastapi import APIRouter
 # Importar routers directamente (NO módulos completos)
 from app.api.v1.multiplex.multiplex import router as multiplex_router
 from app.api.v1.salas import router as salas_router
+from app.api.v1.peliculas import router as peliculas_router
 # from app.api.v1.peliculas import router as peliculas_router
 # from app.api.v1.sillas import router as sillas_router
 # from app.api.v1.funciones import router as funciones_router
@@ -23,8 +24,10 @@ router = APIRouter()
 # router.include_router(auth_router)
 # router.include_router(clientes_router)
 # router.include_router(empleados_router)
+
 router.include_router(multiplex_router)
 router.include_router(salas_router)
+router.include_router(peliculas_router)
 # router.include_router(sillas_router)
 # router.include_router(funciones_router)
 # router.include_router(peliculas_router)
