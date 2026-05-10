@@ -1,95 +1,135 @@
 """Cliente repository."""
+
+from sqlalchemy import select, func, update
 from datetime import datetime, timedelta, timezone
-from sqlalchemy.orm import Session
-from sqlalchemy import select
-from app.infrastructure.base_repository import AbstractRepository
-from app.models.cliente import Cliente
+from app.infrastructure.models.cliente import Cliente
+from ..base_repository import AbstractRepository
 
 
 class ClienteRepository(AbstractRepository[Cliente]):
-    def __init__(self, db: Session):
-        self.db = db
+    """Repositorio para la entidad Cliente."""
 
     def add(self, entity: Cliente) -> Cliente:
+        """Agrega un nuevo cliente."""
         self.db.add(entity)
         self.db.commit()
         self.db.refresh(entity)
         return entity
 
     def get(self, entity_id: int) -> Cliente | None:
-        return self.db.get(Cliente, entity_id)
+        """Obtiene un cliente por ID."""
+        stmt = select(Cliente).where(Cliente.id == entity_id)
+        result = self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
     def get_all(self, skip: int = 0, limit: int = 10) -> list[Cliente]:
-        result = self.db.execute(select(Cliente).offset(skip).limit(limit))
-        return list(result.scalars().all())
+        """Lista clientes con paginación."""
+        stmt = select(Cliente).offset(skip).limit(limit)
+        result = self.db.execute(stmt)
+        return result.scalars().all()
 
-    def update(self, entity_id: int, data: dict) -> Cliente | None:
+    def update(self, entity_id: int, updates: dict) -> Cliente | None:
+        """Actualiza un cliente."""
         entity = self.get(entity_id)
         if not entity:
             return None
-        for key, value in data.items():
+        
+        for key, value in updates.items():
             setattr(entity, key, value)
+        
         self.db.commit()
         self.db.refresh(entity)
         return entity
 
     def delete(self, entity_id: int) -> bool:
+        """Elimina un cliente."""
         entity = self.get(entity_id)
         if not entity:
             return False
+        
         self.db.delete(entity)
         self.db.commit()
         return True
 
     def exists(self, entity_id: int) -> bool:
-        return self.get(entity_id) is not None
+        """Verifica existencia por ID."""
+        stmt = select(func.count()).where(Cliente.id == entity_id)
+        result = self.db.scalar(stmt)
+        return result > 0
+
+    # Métodos específicos de la tarea ST-03
 
     def crear(self, datos_cliente: dict) -> Cliente:
-        return self.add(Cliente(**datos_cliente))
+        """Crea un cliente a partir de un diccionario."""
+        nuevo_cliente = Cliente(**datos_cliente)
+        return self.add(nuevo_cliente)
 
     def buscar_por_correo(self, correo: str) -> Cliente | None:
-        result = self.db.execute(select(Cliente).where(Cliente.correo == correo))
+        """Busca un cliente por su correo electrónico."""
+        stmt = select(Cliente).where(Cliente.correo == correo)
+        result = self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    def buscar_por_id(self, id: int) -> Cliente | None:
-        return self.get(id)
+    def buscar_por_id(self, entity_id: int) -> Cliente | None:
+        """Alias de get() para cumplir con la interfaz solicitada."""
+        return self.get(entity_id)
 
     def existe_correo(self, correo: str) -> bool:
-        return self.buscar_por_correo(correo) is not None
+        """Verifica si ya existe un cliente con ese correo."""
+        stmt = select(func.count()).where(Cliente.correo == correo)
+        result = self.db.scalar(stmt)
+        return result > 0
 
     def actualizar_puntos(self, entity_id: int, delta_puntos: int) -> Cliente:
-        cliente = self.get(entity_id)
-        if not cliente:
-            raise ValueError(f"Cliente con id {entity_id} no existe")
-        cliente.puntos = (cliente.puntos or 0) + delta_puntos
+        """Actualiza los puntos acumulados de un cliente."""
+        entity = self.get(entity_id)
+        if not entity:
+            raise ValueError(f"Cliente con id {entity_id} no encontrado")
+        
+        entity.puntos_acumulados += delta_puntos
         self.db.commit()
-        self.db.refresh(cliente)
-        return cliente
+        self.db.refresh(entity)
+        return entity
 
-    def registrar_intento_fallido(self, correo: str) -> None:
+    def registrar_intento_fallido(self, correo: str):
+        """Registra un intento fallido y bloquea si excede el límite (5)."""
         cliente = self.buscar_por_correo(correo)
         if not cliente:
             return
-        cliente.intentos_fallidos = (cliente.intentos_fallidos or 0) + 1
-        cliente.ultimo_intento = datetime.now(timezone.utc)
+        
+        cliente.intentos_fallidos += 1
+        if cliente.intentos_fallidos >= 5:
+            # Bloqueo por 15 minutos
+            cliente.bloqueado_hasta = datetime.now(timezone.utc) + timedelta(minutes=15)
+        
         self.db.commit()
 
-    def reset_intentos(self, correo: str) -> None:
+    def reset_intentos(self, correo: str):
+        """Reinicia el contador de intentos fallidos."""
         cliente = self.buscar_por_correo(correo)
         if not cliente:
             return
+        
         cliente.intentos_fallidos = 0
-        cliente.ultimo_intento = None
-        cliente.ultimo_login = datetime.now(timezone.utc)
+        cliente.bloqueado_hasta = None
         self.db.commit()
 
     def verificar_bloqueo(self, correo: str) -> bool:
+        """Verifica si el cliente está actualmente bloqueado."""
         cliente = self.buscar_por_correo(correo)
-        if not cliente:
+        if not cliente or not cliente.bloqueado_hasta:
             return False
-        if cliente.intentos_fallidos >= 5 and cliente.ultimo_intento:
-            ultimo = cliente.ultimo_intento
-            if ultimo.tzinfo is None:
-                ultimo = ultimo.replace(tzinfo=timezone.utc)
-            return datetime.now(timezone.utc) - ultimo < timedelta(minutes=15)
+        
+        # Aseguramos que bloqueado_hasta sea aware si es necesario
+        bloqueado_hasta = cliente.bloqueado_hasta
+        if bloqueado_hasta.tzinfo is None:
+            bloqueado_hasta = bloqueado_hasta.replace(tzinfo=timezone.utc)
+            
+        ahora = datetime.now(timezone.utc)
+        
+        if ahora < bloqueado_hasta:
+            return True
+        
+        # Si el tiempo ya pasó, desbloqueamos automáticamente
+        self.reset_intentos(correo)
         return False

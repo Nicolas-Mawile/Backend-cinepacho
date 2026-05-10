@@ -1,0 +1,104 @@
+================================================================================
+REPORTE TÉCNICO DE AUDITORÍA DE DESARROLLO - CINEPACHO BACKEND
+Tareas: ST-01 a ST-18
+Fecha: 2026-05-05
+================================================================================
+
+Este documento resume los cambios, implementaciones y correcciones realizadas
+en el proyecto cinepachobackend siguiendo la arquitectura por capas.
+
+--------------------------------------------------------------------------------
+1. RESUMEN POR TAREAS (ST - STORY TASKS)
+--------------------------------------------------------------------------------
+
+ST-01: Modelado de datos - Tabla Cliente
+- Implementación del modelo Cliente en app/infrastructure/models/cliente.py.
+- Independencia del modelo (no hereda de Persona para simplificar esquema).
+- Campos clave: puntos_acumulados, idioma_preferido, intentos_fallidos, bloqueado_hasta.
+- Migración con Alembic ejecutada.
+
+ST-02: Endpoint POST /api/v1/auth/registro
+- Creación de app/api/schemas/auth.py para validación de entrada/salida.
+- Implementación de AuthService en app/domain/services/auth_service.py (hashing bcrypt).
+- Endpoint en app/api/v1/auth/auth.py con integración de tarea asíncrona de email.
+
+ST-03: ClienteRepository - Métodos de Acceso a Datos
+- Lógica de persistencia en app/infrastructure/repositories/cliente_repository.py.
+- Implementación de bloqueo de cuenta: 15 minutos tras 5 intentos fallidos.
+- Lógica de autodesbloqueo al consultar tras expiración del tiempo.
+
+ST-05: Correo de Bienvenida Asíncrono
+- Infraestructura de email en app/infrastructure/email.py usando smtplib.
+- Uso de asyncio.create_task con asyncio.to_thread para evitar bloqueo del event loop.
+- Template HTML integrado.
+
+ST-06: Tests Unitarios e Integración del Flujo de Registro
+- Suite de pruebas en tests/integration/test_auth.py (7 casos de prueba).
+- Configuración de conftest.py para base de datos temporal SQLite y override de dependencias.
+- Cobertura de flujos exitosos y casos de error (email duplicado, contraseñas débiles).
+
+HU-27 / ST-17: CRUD Empleados y RR.HH.
+- Actualización del modelo Empleado con campos de RR.HH. (cédula, salario, etc.).
+- Creación de HistorialCargo para trazabilidad de cambios de rol.
+- Generación automática de códigos: CP-{mx_code}-{seq:04d}.
+- Creación automática de Usuarios (credenciales) para cargos Cajero y Administrador.
+- Soft delete implementado mediante campo 'activo'.
+
+ST-18: EmpleadoRepository
+- Métodos: crear, listar (con filtros), buscar_por_id, buscar_por_cedula, buscar_por_codigo.
+- siguiente_numero_secuencia: Generación atómica de secuencias por multiplex.
+- tiene_acceso_sistema: Lógica de permisos centralizada en el repositorio.
+- Alias de compatibilidad con AbstractRepository (get, add, update, delete).
+
+--------------------------------------------------------------------------------
+2. ARCHIVOS CREADOS / MODIFICADOS PRINCIPALES
+--------------------------------------------------------------------------------
+
+Infraestructura (Modelos):
+- app/infrastructure/models/cliente.py (Creado)
+- app/infrastructure/models/empleado.py (Modificado: RR.HH. + columna 'seq')
+- app/infrastructure/models/historial_cargo.py (Creado)
+- app/infrastructure/models/cargoEnum.py (Modificado: nuevos cargos)
+
+Infraestructura (Repositorios):
+- app/infrastructure/repositories/cliente_repository.py (Creado)
+- app/infrastructure/repositories/empleado_repository.py (Creado/Extendido)
+- app/infrastructure/base_repository.py (Definición de contrato)
+
+Dominio (Servicios):
+- app/domain/services/auth_service.py (Creado)
+- app/domain/services/empleado_service.py (Creado/Extendido)
+
+API (Schemas y Routers):
+- app/api/v1/auth/auth.py (Creado)
+- app/api/v1/empleados/empleados.py (Creado/Extendido)
+- app/api/schemas/auth.py (Creado)
+- app/api/schemas/empleado.py (Creado)
+
+Seeds y Utilidades:
+- seeds/empleados_seed.py (Creado para pruebas en Postgres)
+
+--------------------------------------------------------------------------------
+3. CORRECCIONES CRÍTICAS (BUG FIXES)
+--------------------------------------------------------------------------------
+
+- OpenAPI 500: Corregido error en la generación del esquema JSON de Redoc al añadir
+  importaciones faltantes de CargoEnum en los routers.
+- Event Loop Error: Solucionado problema de tareas asíncronas en entornos de test
+  síncronos mediante manejo de excepciones en create_task.
+- Postgres Sequence Lock: Corregida incompatibilidad de 'FOR UPDATE' con funciones
+  de agregación en Postgres, moviendo el bloqueo a la tabla Multiplex.
+- Postgres Enum Sync: Sincronización manual del tipo 'cargoenum' en la base de datos
+  real para permitir los nuevos valores del código.
+
+--------------------------------------------------------------------------------
+4. ESTADO ACTUAL
+--------------------------------------------------------------------------------
+- Base de datos: Postgres sincronizada y migrada hasta la revisión ae9491781158.
+- Tests: Suites de tests de Auth y Empleados pasando al 100%.
+- Funcionalidad: Registro de clientes, CRUD de empleados y login de usuarios
+  operativos y validados con datos reales (Seeds).
+
+================================================================================
+FIN DEL REPORTE
+================================================================================
