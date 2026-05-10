@@ -8,9 +8,16 @@ from .config import settings
 from .infrastructure.models.base import Base
 
 
+def _normalize_sync_database_url(url: str) -> str:
+    """Asegura un driver compatible con engine síncrono."""
+    if url.startswith("sqlite+aiosqlite://"):
+        return url.replace("sqlite+aiosqlite://", "sqlite+pysqlite://", 1)
+    return url
+
+
 # Crear engine síncrono
 engine: Engine = create_engine(
-    settings.database_url,
+    _normalize_sync_database_url(settings.database_url),
     echo=False,
     pool_pre_ping=True,
 )

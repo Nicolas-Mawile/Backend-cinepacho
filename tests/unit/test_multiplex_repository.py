@@ -1,7 +1,4 @@
-# tests/unit/test_multiplex_repository.py
 import pytest
-import uuid
-from decimal import Decimal
 from app.infrastructure.models.multiplex import Multiplex
 from app.infrastructure.repositories.multiplex_repository import MultiplexRepository
 
@@ -15,14 +12,13 @@ def repo(db_session):
 def multiplex_data(**kwargs):
     """Factory para crear datos de Multiplex."""
     defaults = {
-        "id": str(uuid.uuid4()),
         "nombre": "Titán Plaza",
         "codigo": "TIT",
         "ciudad": "Bogotá",
         "direccion": "Calle 129B #71B-40",
-        "latitud": Decimal("4.663100"),
-        "longitud": Decimal("-74.150300"),
-        "activo": True,
+        "latitud": 4.6631,
+        "longitud": -74.1503,
+        "estaActivo": True,
     }
     return Multiplex(**{**defaults, **kwargs})
 
@@ -37,16 +33,16 @@ def test_crear_multiplex(repo):
 
 def test_listar_todos(repo):
     """Test listar todos los multiplexes."""
-    repo.crear(multiplex_data(id=str(uuid.uuid4()), codigo="TIT"))
-    repo.crear(multiplex_data(id=str(uuid.uuid4()), codigo="UNI", nombre="Unicentro"))
+    repo.crear(multiplex_data(codigo="TIT"))
+    repo.crear(multiplex_data(codigo="UNI", nombre="Unicentro"))
     result = repo.listar()
     assert len(result) == 2
 
 
 def test_listar_filtrar_ciudad(repo):
     """Test filtrar por ciudad."""
-    repo.crear(multiplex_data(id=str(uuid.uuid4()), codigo="TIT", ciudad="Bogotá"))
-    repo.crear(multiplex_data(id=str(uuid.uuid4()), codigo="MED", ciudad="Medellín"))
+    repo.crear(multiplex_data(codigo="TIT", ciudad="Bogotá"))
+    repo.crear(multiplex_data(codigo="MED", ciudad="Medellín"))
     result = repo.listar(ciudad="Bogotá")
     assert len(result) == 1
     assert result[0].ciudad == "Bogotá"

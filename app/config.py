@@ -33,5 +33,4 @@ class Settings(BaseSettings):
         case_sensitive = False
         extra = "ignore"  # Ignorar variables no definidas
 
-
 settings = Settings()

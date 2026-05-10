@@ -12,7 +12,7 @@ def repo(db_session):
 
 
 @pytest.fixture
-def multiplex_id():
+def multiplex_id(db_session):
     """ID de multiplex para usar en tests."""
     from app.infrastructure.models.multiplex import Multiplex
     
@@ -24,12 +24,9 @@ def multiplex_id():
         latitud=0.0,
         longitud=0.0,
     )
-    from app.database import SessionLocal
-    db = SessionLocal()
-    db.add(multiplex)
-    db.commit()
+    db_session.add(multiplex)
+    db_session.commit()
     multiplex_id_val = multiplex.id
-    db.close()
     return multiplex_id_val
 
 
@@ -115,7 +112,7 @@ def test_obtener_por_numero(repo, multiplex_id):
     assert obtenida.numero == 42
 
 
-def test_obtener_por_numero_inexistente(repo):
+def test_obtener_por_numero_inexistente(repo, multiplex_id):
     """Test obtener sala por número que no existe."""
     obtenida = repo.obtener_por_numero(999, multiplex_id)
     assert obtenida is None

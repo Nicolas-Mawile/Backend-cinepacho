@@ -3,14 +3,20 @@
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
-from app.database import SessionLocal
+from app.database import get_db
 from app.infrastructure.models.multiplex import Multiplex
 
 
 @pytest.fixture
-def client():
+def client(db_session):
     """Cliente de prueba para los endpoints."""
-    return TestClient(app)
+    def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -23,9 +29,8 @@ def token():
 
 
 @pytest.fixture
-def multiplex_id():
+def multiplex_id(db_session):
     """Crea un multiplex para tests."""
-    db = SessionLocal()
     multiplex = Multiplex(
         codigo="INT",
         nombre="Integration Test Multiplex",
@@ -34,10 +39,9 @@ def multiplex_id():
         latitud=0.0,
         longitud=0.0,
     )
-    db.add(multiplex)
-    db.commit()
+    db_session.add(multiplex)
+    db_session.commit()
     multiplex_id = multiplex.id
-    db.close()
     return multiplex_id
 
 
@@ -258,7 +262,7 @@ def test_crear_sala_numero_negativo(client, multiplex_id):
     # Se esperaría 422 (validación de schema)
 
 
-def test_crear_sala_numero_>_999(client, multiplex_id):
+def test_crear_sala_numero_mayor_999(client, multiplex_id):
     """Test crear sala con número > 999."""
     datos = {
         "numero": 1000,
