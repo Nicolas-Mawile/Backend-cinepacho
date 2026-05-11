@@ -30,14 +30,7 @@ class EmpleadoRepository(AbstractRepository[Empleado]):
         """Alias para buscar_por_id."""
         return self.buscar_por_id(entity_id)
 
-    def listar(
-        self, 
-        multiplex_id: int | None = None, 
-        cargo: CargoEnum | None = None, 
-        activo: bool | None = None, 
-        pagina: int = 1, 
-        limite: int = 10
-    ) -> list[Empleado]:
+    def listar(self, multiplex_id: int | None = None, cargo: CargoEnum | None = None, activo: bool | None = None, pagina: int = 1, limite: int = 10) -> list[Empleado]:
         """Lista empleados con paginación y filtros."""
         skip = (pagina - 1) * limite
         stmt = select(Empleado)
@@ -146,3 +139,13 @@ class EmpleadoRepository(AbstractRepository[Empleado]):
             CargoEnum.director       # director
         ]
         return cargo in cargos_con_acceso
+
+    def buscarPorCorreo(self, correo: str) -> Empleado | None:
+        stmt = select(Empleado).where(Empleado.correo == correo)
+        result = self.db.execute(stmt)
+        return result.scalar_one_or_none()
+    
+    def buscarPorCorreoLaboral(self, correoLaboral: str) -> Empleado | None:
+        stmt = select(Empleado).where(Empleado.correoLaboral == correoLaboral)
+        result = self.db.execute(stmt)
+        return result.scalar_one_or_none()

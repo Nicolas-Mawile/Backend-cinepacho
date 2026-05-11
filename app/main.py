@@ -44,15 +44,15 @@ app = FastAPI(
 )
 
 # Configurar CORS
-cors_list = []
+corsOrigins = []
 try:
-    cors_list = json.loads(settings.cors_origins)
+    corsOrigins = json.loads(settings.cors_origins)
 except (json.JSONDecodeError, TypeError):
-    cors_list = ["http://localhost:3000", "http://localhost:5173"]
+    corsOrigins = ["http://localhost:3000", "http://localhost:5173"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_list,
+    allow_origins=corsOrigins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,11 +62,13 @@ app.add_middleware(
 app.include_router(router, prefix="/api/v1")
 
 @app.get("/health")
-def health_check():
+def healthCheck():
+    """Endpoint de verificación del estado del servicio."""
     return {"status": "ok", "app": settings.app_name}
 
 @app.get("/")
 def root():
+    """Entrada principal de la API con enlaces a documentación."""
     return {
         "message": "Bienvenido a Cinepacho Backend",
         "docs": "/docs",

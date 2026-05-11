@@ -50,7 +50,7 @@ def cliente_normal(db_session):
     cliente = Cliente(
         nombre_completo="Test User",
         correo="test@example.com",
-        password_hash=auth_service.hash_password("password123"),
+        password_hash=auth_service.hashPassword("password123"),
         intentos_fallidos=0,
     )
     db_session.add(cliente)
@@ -66,7 +66,7 @@ def cliente_bloqueado(db_session):
     cliente = Cliente(
         nombre_completo="Bloqueado User",
         correo="bloqueado@example.com",
-        password_hash=auth_service.hash_password("password123"),
+        password_hash=auth_service.hashPassword("password123"),
         intentos_fallidos=5,
         bloqueado_hasta=datetime.now(timezone.utc),
     )

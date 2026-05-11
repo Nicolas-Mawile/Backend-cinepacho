@@ -6,24 +6,40 @@ from app.infrastructure.models.cargoEnum import CargoEnum
 from app.infrastructure.models.persona import Persona
 
 class Empleado(Persona):
+    """
+    Representa empleados internos de CinePacho.
+    """
     __tablename__ = "empleados"
     id = Column(Integer, ForeignKey('personas.id'), primary_key=True)
+    usuarioId = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    codigoEmpleado = Column(String, unique=True, nullable=False)
+    correoLaboral = Column(String, unique=True, nullable=False)
 
-    cedula = Column(String, unique=True, nullable=False)
-    nombre_completo = Column(String, nullable=False)
-    codigo_empleado = Column(String, unique=True, nullable=True)
-    fecha_inicio_contrato = Column(Date, nullable=False)
-    salario = Column(Numeric(12, 2), nullable=False)
-    cargo = Column(Enum(CargoEnum), nullable=False)
-    activo = Column(Boolean, default=True)
-    seq = Column(Integer, default=0) # Secuencial por multiplex
-    multiplex_id = Column(Integer, ForeignKey("multiplex.id"), nullable=True)
-    correo_laboral = Column(String, unique=True, nullable=True)
-    
+    usuario = relationship("Usuario", back_populates="empleado", foreign_keys=[usuarioId])
+    contratos = relationship("Contrato", back_populates="empleado")
+    historial_cargos = relationship(
+        "HistorialCargo",
+        back_populates="empleado"
+    )
+
     __mapper_args__ = {
-        'polymorphic_identity': 'empleado'
+        "polymorphic_identity": "empleado"
     }
 
-    multiplex = relationship("Multiplex")
-    contratos = relationship("Contrato", back_populates="empleado")
-    historial_cargos = relationship("HistorialCargo", back_populates="empleado")
+    @property
+    def contratoActivo(self):
+        """Retorna el contrato activo del empleado."""
+        return next((contrato for contrato in self.contratos if contrato.activo),None)
+
+    @property
+    def cargoActual(self):
+        """Retorna el cargo actual del empleado."""
+        contrato = self.contratoActivo
+        return contrato.cargo if contrato else None
+
+    @property
+    def multiplexActual(self):
+        """Retorna el multiplex actual del empleado."""
+        contrato = self.contratoActivo
+        return contrato.multiplex if contrato else None
+    

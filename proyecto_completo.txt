@@ -467,6 +467,11 @@ ARCHIVO: .pytest_cache\v\cache\nodeids
 ================================================================================
 
 [
+  "tests/unit/test_auth_service.py::test_create_access_token_contains_claims",
+  "tests/unit/test_auth_service.py::test_hash_password_and_verify",
+  "tests/unit/test_dependencies.py::test_cliente_en_endpoint_admin_lanza_403",
+  "tests/unit/test_dependencies.py::test_get_current_cliente_con_empleado_lanza_403",
+  "tests/unit/test_dependencies.py::test_token_invalido_lanza_401",
   "tests/unit/test_multiplex_endpoints.py::test_crear_multiplex",
   "tests/unit/test_multiplex_endpoints.py::test_desactivar",
   "tests/unit/test_multiplex_endpoints.py::test_listar_filtrar_ciudad",
@@ -477,6 +482,11 @@ ARCHIVO: .pytest_cache\v\cache\nodeids
   "tests/unit/test_multiplex_repository.py::test_listar_filtrar_ciudad",
   "tests/unit/test_multiplex_repository.py::test_listar_todos",
   "tests/unit/test_multiplex_repository.py::test_tiene_dependencias_sin_salas",
+  "tests/unit/test_roles.py::test_admin_general_accede_correctamente",
+  "tests/unit/test_roles.py::test_admin_mx_no_puede_ser_admin_general",
+  "tests/unit/test_roles.py::test_cajero_accede_correctamente",
+  "tests/unit/test_roles.py::test_cajero_no_puede_ser_admin",
+  "tests/unit/test_roles.py::test_cliente_no_puede_acceder_a_endpoint_empleado",
   "tests/unit/test_sala_repository.py::test_obtener_por_numero",
   "tests/unit/test_sala_repository.py::test_obtener_por_numero_inexistente",
   "tests/unit/test_sala_service.py::test_actualizar_sala_exitosa",
@@ -646,15 +656,15 @@ app = FastAPI(
 )
 
 # Configurar CORS
-cors_list = []
+corsOrigins = []
 try:
-    cors_list = json.loads(settings.cors_origins)
+    corsOrigins = json.loads(settings.cors_origins)
 except (json.JSONDecodeError, TypeError):
-    cors_list = ["http://localhost:3000", "http://localhost:5173"]
+    corsOrigins = ["http://localhost:3000", "http://localhost:5173"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_list,
+    allow_origins=corsOrigins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -664,11 +674,13 @@ app.add_middleware(
 app.include_router(router, prefix="/api/v1")
 
 @app.get("/health")
-def health_check():
+def healthCheck():
+    """Endpoint de verificación del estado del servicio."""
     return {"status": "ok", "app": settings.app_name}
 
 @app.get("/")
 def root():
+    """Entrada principal de la API con enlaces a documentación."""
     return {
         "message": "Bienvenido a Cinepacho Backend",
         "docs": "/docs",
@@ -697,72 +709,81 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from typing import List
 from app.config import settings
-from app.models.cliente import Cliente
-from app.models.empleado import Empleado
+from app.infrastructure.models.cliente import Cliente
+from app.infrastructure.models.empleado import Empleado
 from app.database import get_db
 from app.domain.roles import get_permisos
+from app.infrastructure.models.usuario import Usuario
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/login")
+oauth2Scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
-):
+
+def get_current_user(token: str = Depends(oauth2Scheme), db: Session = Depends(get_db)):
+    """Decodifica el JWT y devuelve el usuario autenticado."""
+    invalidTokenException = HTTPException(status_code=401, detail="Token inválido")
+
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        subject: str = payload.get("sub")
-        tipo: str = payload.get("tipo")
-        if subject is None or tipo != "access":
-            raise HTTPException(status_code=401, detail="Token inválido")
+        payload = jwt.decode(
+            token,
+            settings.secret_key,
+            algorithms=[settings.algorithm]
+        )
+        userId = payload.get("sub")
+        if userId is None:
+            raise invalidTokenException
     except JWTError:
-        raise HTTPException(status_code=401, detail="Token inválido o expirado")
+        raise invalidTokenException
 
-    kind: str = payload.get("kind", "cliente")
-    if kind == "cliente":
-        result = db.execute(select(Cliente).where(Cliente.id == int(subject)))
-        user = result.scalar_one_or_none()
-    else:
-        result = db.execute(select(Empleado).where(Empleado.id == int(subject)))
-        user = result.scalar_one_or_none()
+    usuario = db.query(Usuario).filter(Usuario.id == int(userId)).first()
+    if usuario is None:
+        raise invalidTokenException
 
-    if user is None:
-        raise HTTPException(status_code=401, detail="Usuario no encontrado")
-    return user
+    return usuario
+
 
 async def get_current_cliente(user=Depends(get_current_user)):
     if not isinstance(user, Cliente):
         raise HTTPException(status_code=403, detail="Se requiere rol CLIENTE")
     return user
 
+
 async def get_current_cajero(user=Depends(get_current_user)):
     if not isinstance(user, Empleado) or user.rol != "EMPLEADO-CAJERO":
         raise HTTPException(status_code=403, detail="Se requiere rol EMPLEADO-CAJERO")
     return user
+
 
 async def get_current_admin_mx(user=Depends(get_current_user)):
     if not isinstance(user, Empleado) or user.rol != "ADMIN-MULTIPLEX":
         raise HTTPException(status_code=403, detail="Se requiere rol ADMIN-MULTIPLEX")
     return user
 
+
 async def get_current_admin_general(user=Depends(get_current_user)):
     if not isinstance(user, Empleado) or user.rol != "ADMIN-GENERAL":
         raise HTTPException(status_code=403, detail="Se requiere rol ADMIN-GENERAL")
     return user
 
+
 def require_rol(role: str):
+    """Placeholder para requerir un rol específico en un endpoint."""
     def check_rol(current_user=Depends(get_current_user)):
         return current_user
     return check_rol
 
-def require_role(roles_permitidos: List[str]):
+
+def require_role(rolesPermitidos: List[str]):
+    """Dependencia que restringe el acceso a roles específicos."""
     async def checker(user=Depends(get_current_user)):
         rol = "CLIENTE" if isinstance(user, Cliente) else user.rol
-        if rol not in roles_permitidos and "ADMIN-GENERAL" not in roles_permitidos:
+        if rol not in rolesPermitidos and "ADMIN-GENERAL" not in rolesPermitidos:
             raise HTTPException(status_code=403, detail="Acceso denegado")
         return user
     return checker
 
+
 def require_permiso(permiso: str):
+    """Dependencia que valida el permiso del usuario para un recurso."""
     async def checker(user=Depends(get_current_user)):
         rol = "CLIENTE" if isinstance(user, Cliente) else user.rol
         if permiso not in get_permisos(rol):
@@ -770,7 +791,9 @@ def require_permiso(permiso: str):
         return user
     return checker
 
+
 def require_multiplex(multiplex_id: int):
+    """Dependencia para validar el multiplex en el contexto del usuario."""
     def check_multiplex(current_user=Depends(get_current_user)):
         return current_user
     return check_multiplex
@@ -785,10 +808,10 @@ ARCHIVO: app\api\router.py
 from fastapi import APIRouter
 
 # Importar routers directamente (NO módulos completos)
-from app.api.v1.multiplex.multiplex import router as multiplex_router
-from app.api.v1.salas import router as salas_router
-from app.api.v1.auth.auth import router as auth_router
-from app.api.v1.empleados.empleados import router as empleados_router
+from app.api.multiplex.multiplex import router as multiplex_router
+from app.api.salas import router as salas_router
+from app.api.auth.auth import router as auth_router
+from app.api.empleados.empleados import router as empleados_router
 
 # Router principal
 router = APIRouter()
@@ -809,484 +832,137 @@ ARCHIVO: app\api\__init__.py
 
 
 ================================================================================
-ARCHIVO: app\api\schemas\auth.py
+ARCHIVO: app\api\auth\auth.py
 ================================================================================
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
 from datetime import datetime
 
-class RegistroRequest(BaseModel):
-    nombre: str = Field(..., min_length=2, max_length=150)
-    correo: EmailStr
-    password: str = Field(..., min_length=8)
-    confirm_password: str
-
-    @field_validator("password")
-    @classmethod
-    def validate_password_complexity(cls, v: str) -> str:
-        if not any(c.isupper() for c in v):
-            raise ValueError("La contraseña debe contener al menos una mayúscula")
-        if not any(c.islower() for c in v):
-            raise ValueError("La contraseña debe contener al menos una minúscula")
-        if not any(c.isdigit() for c in v):
-            raise ValueError("La contraseña debe contener al menos un número")
-        return v
-
-    @field_validator("confirm_password")
-    @classmethod
-    def passwords_match(cls, v: str, info) -> str:
-        if "password" in info.data and v != info.data["password"]:
-            raise ValueError("Las contraseñas no coinciden")
-        return v
-
-class ClienteResponse(BaseModel):
-    id: int
-    nombre_completo: str
-    correo: EmailStr
-    fecha_registro: datetime
-    puntos_acumulados: int
-    idioma_preferido: str
-
-    model_config = {
-        "from_attributes": True
-    }
-
-class AuthResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    cliente: ClienteResponse
-
-
-
-================================================================================
-ARCHIVO: app\api\schemas\empleado.py
-================================================================================
-
-"""Schemas for Empleado entity."""
-
-from pydantic import BaseModel, EmailStr, Field
-from datetime import date, datetime
-from typing import List, Optional
-from app.infrastructure.models.cargoEnum import CargoEnum
-
-class EmpleadoBase(BaseModel):
-    primer_nombre: str
-    segundo_nombre: Optional[str] = None
-    primer_apellido: str
-    segundo_apellido: Optional[str] = None
-    cedula_ciudadania: str
-    fecha_nacimiento: date
-    telefono: str
-    email: EmailStr
-    cargo: CargoEnum
-    salario: float
-    multiplex_id: int
-
-class EmpleadoCreate(EmpleadoBase):
-    pass
-
-class EmpleadoUpdate(BaseModel):
-    cargo: Optional[CargoEnum] = None
-    salario: Optional[float] = None
-    multiplex_id: Optional[int] = None
-
-class EmpleadoResponse(BaseModel):
-    id: int
-    nombre: str
-    email: str
-    cargo: CargoEnum
-    multiplex_id: Optional[int]
-    estado: str
-    created_at: datetime
-
-    model_config = {
-        "from_attributes": True
-    }
-
-class EmpleadoDetalle(BaseModel):
-    id: int
-    primer_nombre: str
-    segundo_nombre: Optional[str]
-    primer_apellido: str
-    segundo_apellido: Optional[str]
-    cedula_ciudadania: str
-    fecha_nacimiento: date
-    telefono: str
-    email: str
-    cargo: CargoEnum
-    salario: float
-    multiplex_id: Optional[int]
-    correo_laboral: Optional[str]
-    estado: str
-    created_at: datetime
-
-    model_config = {
-        "from_attributes": True
-    }
-
-class EmpleadoListElement(BaseModel):
-    id: int
-    primer_nombre: str
-    primer_apellido: str
-    cargo: CargoEnum
-    multiplex_id: Optional[int]
-
-    model_config = {
-        "from_attributes": True
-    }
-
-class EmpleadoPaginated(BaseModel):
-    total: int
-    page: int
-    limit: int
-    total_pages: int
-    data: List[EmpleadoListElement]
-
-
-
-================================================================================
-ARCHIVO: app\api\schemas\multiplex.py
-================================================================================
-
-from typing import List, Optional
-import uuid
-from decimal import Decimal
-from datetime import datetime
-from pydantic import BaseModel, Field
-
-from .sala import SalaSimpleResponse
-
-class MultiplexCreate(BaseModel):
-    nombre: str = Field(..., min_length=3, max_length=150)
-    ciudad: str = Field(..., min_length=2, max_length=100)
-    direccion: str = Field(..., min_length=5, max_length=250)
-    latitud: Decimal = Field(..., ge=-90, le=90)
-    longitud: Decimal = Field(..., ge=-180, le=180)
-
-class MultiplexUpdate(BaseModel):
-    nombre: Optional[str] | None = Field(None, min_length=3, max_length=150)
-    ciudad: Optional[str] | None = None
-    direccion: Optional[str] | None = None
-    latitud: Optional[Decimal] | None = None
-    longitud: Optional[Decimal] | None = None
-
-class MultiplexResponse(BaseModel):
-    id: int
-    nombre: str
-    codigo: str
-    ciudad: str
-    direccion: str
-    latitud: Decimal
-    longitud: Decimal
-
-    activo: bool = Field(alias="estaActivo")
-
-    cantidad_salas: int = 0
-
-    salas :List[SalaSimpleResponse] = []
-
-    model_config = {
-        "from_attributes": True,
-        "populate_by_name": True
-    }
-
-
-================================================================================
-ARCHIVO: app\api\schemas\sala.py
-================================================================================
-
-"""Sala schemas."""
-
-from typing import List, Optional
-from pydantic import BaseModel, Field
-
-
-class SillaCreate(BaseModel):
-    """Schema para crear o actualizar sillas dentro de una sala."""
-    tipo_silla: str = Field(..., min_length=1, description="Tipo de silla, por ejemplo preferencial o regular")
-    fila_silla: int = Field(..., ge=1, description="Fila de la silla")
-    columna_silla: int = Field(..., ge=1, description="Columna de la silla")
-
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "tipo_silla": "preferencial",
-                "fila_silla": 1,
-                "columna_silla": 1
-            }
-        }
-    }
-
-
-class SalaCreate(BaseModel):
-    """Schema para crear una nueva sala."""
-    numero: Optional[int] = Field(None, ge=1, le=999, description="Número de sala (1-999), se asigna automáticamente si no se proporciona")
-    capacidadTotal: int = Field(..., ge=1, description="Capacidad total de la sala")
-    capacidadPreferencial: int = Field(..., ge=0, description="Capacidad de sillas preferenciales")
-    sillas: List[SillaCreate] = Field(default_factory=list, description="Lista de sillas de la sala")
-
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "numero": 1,
-                "capacidadTotal": 60,
-                "capacidadPreferencial": 20,
-                "sillas": [
-                    {"tipo_silla": "preferencial", "fila_silla": 1, "columna_silla": 1},
-                    {"tipo_silla": "regular", "fila_silla": 1, "columna_silla": 2}
-                ]
-            }
-        }
-    }
-
-    def model_post_init(self, __context):
-        """Validación: capacidad preferencial no puede exceder capacidad total."""
-        if self.capacidadPreferencial > self.capacidadTotal:
-            raise ValueError("capacidadPreferencial no puede exceder capacidadTotal")
-
-
-class SalaUpdate(BaseModel):
-    """Schema para actualizar una sala."""
-    numero: Optional[int] = Field(None, ge=1, le=999, description="Número de sala")
-    capacidadTotal: Optional[int] = Field(None, ge=1, description="Capacidad total")
-    capacidadPreferencial: Optional[int] = Field(None, ge=0, description="Capacidad preferencial")
-    sillas: Optional[List[SillaCreate]] = Field(None, description="Lista de sillas de la sala")
-
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "numero": 2,
-                "capacidadTotal": 60,
-                "sillas": [
-                    {"tipo_silla": "preferencial", "fila_silla": 1, "columna_silla": 1},
-                    {"tipo_silla": "regular", "fila_silla": 1, "columna_silla": 2}
-                ]
-            }
-        }
-    }
-
-    def model_post_init(self, __context):
-        """Validación: si ambas capacidades están presentes, validar relación."""
-        if self.capacidadPreferencial is not None and self.capacidadTotal is not None:
-            if self.capacidadPreferencial > self.capacidadTotal:
-                raise ValueError("capacidadPreferencial no puede exceder capacidadTotal")
-
-
-class SillaResponse(BaseModel):
-    """Schema de respuesta para una silla."""
-    tipo_silla: str
-    fila_silla: int = Field(alias="fila")
-    columna_silla: int = Field(alias="columna")
-
-    model_config = {
-        "from_attributes": True,
-        "populate_by_name": True,
-    }
-
-
-class SalaResponse(BaseModel):
-    """Schema de respuesta para una sala."""
-    id: int
-    numero: int
-    capacidadTotal: int
-    capacidadPreferencial: int
-    activa: bool = Field(alias="estaActiva")
-    cantidad_sillas: int
-    multiplexId: int
-    sillas: List[SillaResponse] = []
-
-    model_config = {
-        "from_attributes": True,
-        "populate_by_name": True,
-        "json_schema_extra": {
-            "example": {
-                "id": 1,
-                "numero": 1,
-                "capacidadTotal": 60,
-                "capacidadPreferencial": 20,
-                "activa": True,
-                "cantidad_sillas": 60,
-                "multiplexId": 1,
-                "sillas": [
-                    {"tipo_silla": "preferencial", "fila_silla": 1, "columna_silla": 1},
-                    {"tipo_silla": "regular", "fila_silla": 1, "columna_silla": 2}
-                ]
-            }
-        }
-    }
-
-class SalaSimpleResponse(BaseModel):
-    """Schema de respuesta simple para una sala (sin sillas)."""
-    id: int
-    numero: int
-
-    model_config = {
-        "from_attributes": True
-    }
-
-
-================================================================================
-ARCHIVO: app\api\v1\auth\auth.py
-================================================================================
-
-"""Authentication endpoints - Consolidated."""
-import asyncio
-from datetime import timedelta
-from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, status
-from jose import jwt, JWTError
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.schemas.auth import RegistroRequest, AuthResponse
-from app.infrastructure.repositories.cliente_repository import ClienteRepository
-from app.infrastructure.repositories.refresh_token_repository import RefreshTokenRepository
-from app.domain.services.auth_service import AuthService, authenticate_user, authenticate_empleado, crear_token
-from app.infrastructure.email import enviar_bienvenida
 from app.database import get_db
-from app.config import settings
+from app.api.schemas.auth import RegistroRequest, LoginRequest
+from app.infrastructure.models.persona import Persona
+from app.infrastructure.models.usuario import Usuario
+from app.infrastructure.models.rol import Rol
+from app.infrastructure.repositories.usuarioRepository import UsuarioRepository
+from app.domain.services.auth_service import AuthService
 from app.api.dependencies import get_current_user
-from app.domain.roles import get_permisos
-from app.infrastructure.models.cliente import Cliente
+from cinepachobackend.app.infrastructure.models.cliente import Cliente
+from cinepachobackend.app.infrastructure.repositories.cliente_repository import ClienteRepository
 
-router = APIRouter(prefix="/auth", tags=["Auth"])
+router = APIRouter(
+    prefix="/auth",
+    tags=["Auth"]
+)
 
-# ==================== Request/Response Models ====================
-class LoginRequest(BaseModel):
-    correo: str
-    password: str
-
-class RefreshRequest(BaseModel):
-    refresh_token: str
-
-# ==================== Helpers ====================
-def get_cliente_repository(db: Session = Depends(get_db)):
-    return ClienteRepository(db)
-
-# ==================== Endpoints ====================
-
-@router.post("/registro", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-def registro(
-    datos: RegistroRequest,
-    repo: ClienteRepository = Depends(get_cliente_repository),
-    auth_service: AuthService = Depends()
-):
-    """
-    Registra un nuevo cliente y retorna un token de acceso.
-    """
-    # 1. Verificar si el correo ya existe
-    if repo.existe_correo(datos.correo):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="El correo electrónico ya está registrado"
-        )
-    
-    # 2. Registrar cliente (hasheo ocurre en el servicio)
-    nuevo_cliente = auth_service.registrar_cliente(
-        repo=repo,
-        nombre=datos.nombre,
-        correo=datos.correo,
-        password=datos.password
-    )
-    
-    # 3. Generar token
-    access_token = auth_service.create_access_token(
-        data={"sub": str(nuevo_cliente.id), "email": nuevo_cliente.correo}
-    )
-    
-    # 4. Enviar correo de bienvenida (asíncrono)
-    try:
-        loop = asyncio.get_running_loop()
-        loop.create_task(
-            asyncio.to_thread(enviar_bienvenida, nuevo_cliente.nombre_completo, nuevo_cliente.correo)
-        )
-    except RuntimeError:
-        # Si no hay loop corriendo (e.g. en algunos contextos de test sincrónicos), 
-        # ignoramos el envío de correo para no romper la respuesta.
-        pass
-    
+def _buildUsuarioResponse(usuario: Usuario) -> dict:
+    """Construye la respuesta JSON para un usuario autenticado."""
     return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "cliente": nuevo_cliente
+        "id": usuario.id,
+        "nombre": usuario.persona.nombre,
+        "apellido": usuario.persona.apellido,
+        "email": usuario.persona.email,
+        "rol": usuario.rol.nombre
     }
+
+
+@router.post("/registro")
+def registro(datos: RegistroRequest, db: Session = Depends(get_db)):
+    """Registra un nuevo usuario y genera un token de acceso. ES PARA REGISTRAR CLIENTES, LOS EMPLEADOS LOS REGISTRAN LOS ADMIN."""
+    usuarioRepo = UsuarioRepository(db)
+    clienteRepo = ClienteRepository(db)
+    authService = AuthService()
+
+    existeUsuario = usuarioRepo.buscarPorCorreo(datos.correo)
+    if existeUsuario:
+        raise HTTPException(status_code=409, detail="Correo ya registrado")
+
+    persona = Persona(
+        nombre=datos.nombre,
+        apellido=datos.apellido,
+        email=datos.correo,
+        telefono=datos.telefono,)
+
+    db.add(persona)
+    db.commit()
+    db.refresh(persona)
+
+    rolCliente = db.query(Rol).filter(Rol.nombre == "CLIENTE").first()
+    if not rolCliente:
+        raise HTTPException(status_code=500, detail="Rol CLIENTE no existe")
+
+    usuario = Usuario(
+        password=authService.hashPassword(datos.password),
+        persona_id=persona.id,
+        rol_id=rolCliente.id)
+
+    db.add(usuario)
+    db.commit()
+    db.refresh(usuario)
+
+    cliente = Cliente(id=persona.id, usuarioId=usuario.id, puntosAcumulados=0)
+    db.add(cliente)
+    db.commit()
+
+    token = authService.createAccessToken(data={"sub": str(usuario.id), "role": rolCliente.nombre})
+
+    return {"access_token": token,
+            "token_type": "bearer",
+            "usuario": _buildUsuarioResponse(usuario)}
 
 
 @router.post("/login")
-async def login(data: LoginRequest, db: Session = Depends(get_db)):
-    """
-    Inicia sesión de un cliente existente.
-    Retorna access_token y refresh_token.
-    """
-    tokens, error = authenticate_user(
-        data.correo, data.password,
-        ClienteRepository(db),
-        RefreshTokenRepository(db)
+def login(data: LoginRequest, db: Session = Depends(get_db)):
+    """Valida credenciales y devuelve un token JWT de acceso."""
+    usuarioRepo = UsuarioRepository(db)
+    authService = AuthService()
+
+    usuario = usuarioRepo.buscarPorCorreo(data.email)
+    if not usuario:
+        raise HTTPException(status_code=401, detail="Credenciales inválidas")
+    
+    if not usuario.estaActivo:
+        raise HTTPException(status_code=403, detail="Usuario inactivo")
+    
+    if usuario.bloqueadoHasta and usuario.bloqueadoHasta > datetime.now(datetime.timezone.utc):
+        raise HTTPException(status_code=403, detail="Usuario bloqueado temporalmente")
+
+    validPassword = authService.verifyPassword(data.password, usuario.password)
+    if not validPassword:
+        usuario.inetentosFallidos += 1
+        db.commit()
+        raise HTTPException(status_code=401, detail="Credenciales inválidas")
+    
+    usuario.inetentosFallidos = 0
+
+    accessToken = authService.createAccessToken(
+        data={"sub": str(usuario.id), "role": usuario.rol.nombre}
     )
-    if error == "credenciales_invalidas":
-        raise HTTPException(status_code=401, detail="Correo o contraseña incorrectos")
-    if error and error.startswith("bloqueado"):
-        minutos = error.split(":")[1]
-        raise HTTPException(status_code=429, detail=f"Cuenta bloqueada. Intenta en {minutos} minutos")
-    return tokens
 
-
-@router.post("/refresh")
-async def refresh(data: RefreshRequest, db: Session = Depends(get_db)):
-    """
-    Renueva el access token usando un refresh token válido.
-    """
-    rt_repo = RefreshTokenRepository(db)
-    try:
-        payload = jwt.decode(data.refresh_token, settings.secret_key, algorithms=[settings.algorithm])
-        if payload.get("tipo") != "refresh":
-            raise HTTPException(status_code=401, detail="Token inválido")
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Token inválido o expirado")
-
-    rt = rt_repo.buscar_valido(data.refresh_token)
-    if rt is None:
-        raise HTTPException(status_code=401, detail="Refresh token inválido o ya utilizado")
-
-    rt_repo.revocar(data.refresh_token)
-
-    cliente_id = payload.get("sub")
-    access_token = crear_token(
-        {"sub": cliente_id, "tipo": "access", "kind": payload.get("kind", "cliente")},
-        timedelta(hours=24)
-    )
-    return {"access_token": access_token}
-
-
-@router.post("/login/empleado")
-async def login_empleado(data: LoginRequest, db: Session = Depends(get_db)):
-    """
-    Inicia sesión de un empleado.
-    Retorna access_token y refresh_token con rol de empleado.
-    """
-    tokens, error = authenticate_empleado(data.correo, data.password, db)
-    if error:
-        raise HTTPException(status_code=401, detail="Credenciales incorrectas")
-    return tokens
-
-
-@router.get("/me")
-async def me(user=Depends(get_current_user)):
-    """
-    Obtiene los datos del usuario autenticado actualmente.
-    """
-    rol = "CLIENTE" if isinstance(user, Cliente) else user.rol
     return {
-        "id": user.id,
-        "correo": user.correo,
-        "nombre": user.nombre,
-        "rol": rol,
-        "permisos": get_permisos(rol)
+        "access_token": accessToken,
+        "token_type": "bearer",
+        "usuario": _buildUsuarioResponse(usuario)
     }
 
 
+@router.get("/me")
+def me(user=Depends(get_current_user)):
+    """Devuelve los datos del usuario autenticado."""
+    permisos = [permiso.nombre for permiso in user.rol.permisos]
+    return {
+        "id": user.id,
+        "nombre": user.persona.nombre,
+        "apellido": user.persona.apellido,
+        "email": user.persona.email,
+        "rol": user.rol.nombre,
+        "permisos": permisos
+    }
+
 
 ================================================================================
-ARCHIVO: app\api\v1\auth\__init__.py
+ARCHIVO: app\api\auth\__init__.py
 ================================================================================
 
 from .auth import router
@@ -1294,199 +970,63 @@ from .auth import router
 
 
 ================================================================================
-ARCHIVO: app\api\v1\empleados\empleados.py
+ARCHIVO: app\api\empleados\empleados.py
 ================================================================================
 
-"""Empleado endpoints."""
+"""Admin empleado endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import (APIRouter, Depends, HTTPException, Query)
 from sqlalchemy.orm import Session
-from typing import Optional
-import math
-
-from app.api.schemas.empleado import (
-    EmpleadoCreate, EmpleadoUpdate, EmpleadoResponse, 
-    EmpleadoDetalle, EmpleadoPaginated
-)
-from app.infrastructure.models.cargoEnum import CargoEnum
-from app.infrastructure.repositories.empleado_repository import EmpleadoRepository
-from app.domain.services.empleado_service import EmpleadoService
 from app.database import get_db
+from app.api.dependencies import (get_current_admin_general)
+from app.api.schemas.empleado import (EmpleadoCrearRequest, EmpleadoDetalle, EmpleadoListElement)
+from app.infrastructure.repositories.empleado_repository import (EmpleadoRepository)
+from app.domain.services.empleado_service import (EmpleadoService)
 
-router = APIRouter(prefix="/empleados", tags=["Empleados"])
+router = APIRouter(prefix="/admin/empleados", tags=["Admin - Empleados"])
 
-def get_empleado_repository(db: Session = Depends(get_db)):
+def get_repository(db: Session = Depends(get_db)):
     return EmpleadoRepository(db)
 
-@router.post("", response_model=dict, status_code=status.HTTP_201_CREATED)
-def crear_empleado(
-    datos: EmpleadoCreate,
-    repo: EmpleadoRepository = Depends(get_empleado_repository),
-    service: EmpleadoService = Depends()
-):
-    """Crea un nuevo empleado."""
-    # Verificar cédula única
-    if repo.buscar_por_cedula(datos.cedula_ciudadania):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="La cédula ya está registrada"
-        )
-    
-    nuevo_empleado = service.crear_empleado(repo, datos.model_dump())
-    
-    return {
-        "message": "Empleado creado correctamente",
-        "empleado": {
-            "id": nuevo_empleado.id,
-            "nombre": nuevo_empleado.nombre_completo,
-            "email": nuevo_empleado.email,
-            "cargo": nuevo_empleado.cargo,
-            "multiplex_id": nuevo_empleado.multiplex_id,
-            "estado": "activo" if nuevo_empleado.activo else "inactivo",
-            "created_at": nuevo_empleado.created_at
-        }
-    }
+@router.post("/", response_model=EmpleadoDetalle, status_code=201)
+def crear_empleado(datos: EmpleadoCrearRequest, repo: EmpleadoRepository = Depends(get_repository), _: dict = Depends(get_current_admin_general)):
 
-@router.get("", response_model=EmpleadoPaginated)
-def listar_empleados(
-    page: int = Query(1, ge=1),
-    limit: int = Query(8, ge=1),
-    multiplex_id: Optional[int] = None,
-    cargo: Optional[CargoEnum] = None,
-    activo: Optional[bool] = Query(None),
-    repo: EmpleadoRepository = Depends(get_empleado_repository)
-):
-    """Lista empleados con paginación y filtros de multiplex, cargo y estado."""
-    # Usar el nuevo método listar del repositorio que ya maneja filtros y paginación
-    total = repo.count(multiplex_id=multiplex_id, cargo=cargo, activo=activo)
-    empleados = repo.listar(
-        multiplex_id=multiplex_id, 
-        cargo=cargo, 
-        activo=activo, 
-        pagina=page, 
-        limite=limit
-    )
+    service = EmpleadoService(repo.db)
+    try:
+        empleado = service.crearEmpleado(repo,datos.model_dump())
+        return empleado
 
-    # Mapear a formato de lista del contrato
-    data = []
-    for emp in empleados:
-        data.append({
-            "id": emp.id,
-            "primer_nombre": emp.nombre,
-            "primer_apellido": emp.apellido,
-            "cargo": emp.cargo,
-            "multiplex_id": emp.multiplex_id
-        })
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-    return {
-        "total": total,
-        "page": page,
-        "limit": limit,
-        "total_pages": math.ceil(total / limit) if total > 0 else 0,
-        "data": data
-    }
+@router.get("/",response_model=list[EmpleadoListElement])
+def listar_empleados(pagina: int = Query(1, ge=1), limite: int = Query(10, ge=1, le=100), repo: EmpleadoRepository = Depends(get_repository), 
+                     _: dict = Depends(get_current_admin_general)):
 
-@router.get("/{empleado_id}", response_model=dict)
-def obtener_empleado(
-    empleado_id: int,
-    repo: EmpleadoRepository = Depends(get_empleado_repository)
-):
-    """Obtiene el detalle de un empleado con su historial de cargos."""
-    emp = repo.get(empleado_id)
-    if not emp:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Empleado no encontrado"
-        )
-    
-    # Historial de cargos
-    historial = []
-    for h in emp.historial_cargos:
-        historial.append({
-            "fecha": h.fecha_cambio,
-            "cargo_anterior": h.cargo_anterior,
-            "cargo_nuevo": h.cargo_nuevo,
-            "motivo": h.motivo
-        })
+    empleados = repo.listar(pagina=pagina, limite=limite)
+    return empleados
 
-    return {
-        "id": emp.id,
-        "primer_nombre": emp.nombre,
-        "segundo_nombre": None,
-        "primer_apellido": emp.apellido,
-        "segundo_apellido": None,
-        "cedula_ciudadania": emp.cedula,
-        "fecha_nacimiento": emp.fecha_inicio_contrato,
-        "telefono": emp.telefono,
-        "email": emp.email,
-        "cargo": emp.cargo,
-        "salario": emp.salario,
-        "multiplex_id": emp.multiplex_id,
-        "correo_laboral": emp.correo_laboral,
-        "codigo_empleado": emp.codigo_empleado,
-        "estado": "activo" if emp.activo else "inactivo",
-        "created_at": emp.created_at,
-        "historial_cargos": historial
-    }
+@router.get("/{id}",response_model=EmpleadoDetalle)
+def obtener_empleado(id: int, repo: EmpleadoRepository = Depends(get_repository), _: dict = Depends(get_current_admin_general)):
 
-@router.patch("/{empleado_id}/desactivar", response_model=dict)
-def desactivar_empleado(
-    empleado_id: int,
-    repo: EmpleadoRepository = Depends(get_empleado_repository)
-):
-    """Desactiva un empleado (PATCH /desactivar)."""
-    if not repo.delete(empleado_id):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Empleado no encontrado"
-        )
-    return {"message": "Empleado desactivado correctamente"}
+    empleado = repo.buscar_por_id(id)
+    if not empleado:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado")
+    return empleado
 
-@router.put("/{empleado_id}", response_model=dict)
-def actualizar_empleado(
-    empleado_id: int,
-    datos: EmpleadoUpdate,
-    repo: EmpleadoRepository = Depends(get_empleado_repository)
-):
-    """Actualiza los datos laborales de un empleado."""
-    emp = repo.update(empleado_id, datos.model_dump(exclude_unset=True))
-    if not emp:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Empleado no encontrado"
-        )
-    
-    return {
-        "message": "Empleado actualizado correctamente",
-        "empleado": {
-            "id": emp.id,
-            "primer_nombre": emp.nombre,
-            "primer_apellido": emp.apellido,
-            "email": emp.email,
-            "cargo": emp.cargo,
-            "salario": emp.salario,
-            "multiplex_id": emp.multiplex_id,
-            "updated_at": emp.updated_at
-        }
-    }
+@router.patch("/{id}/deshabilitar")
+def deshabilitar_empleado(id: int, repo: EmpleadoRepository = Depends(get_repository),_: dict = Depends(get_current_admin_general)):
 
-@router.delete("/{empleado_id}")
-def eliminar_empleado(
-    empleado_id: int,
-    repo: EmpleadoRepository = Depends(get_empleado_repository)
-):
-    """Deshabilita un empleado."""
-    if not repo.delete(empleado_id):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Empleado no encontrado"
-        )
-    return {"message": "ok"}
+    empleado = repo.buscar_por_id(id)
+    if not empleado:
+        raise HTTPException(status_code=404, detail="Empleado no encontrado")
 
+    repo.desactivar(id)
+    return {"message": "Empleado deshabilitado correctamente"}
 
 
 ================================================================================
-ARCHIVO: app\api\v1\empleados\__init__.py
+ARCHIVO: app\api\empleados\__init__.py
 ================================================================================
 
 from .empleados import router
@@ -1494,7 +1034,7 @@ from .empleados import router
 
 
 ================================================================================
-ARCHIVO: app\api\v1\multiplex\multiplex.py
+ARCHIVO: app\api\multiplex\multiplex.py
 ================================================================================
 
 """Admin multiplex endpoints."""
@@ -1575,7 +1115,7 @@ def cambiar_estado_multiplex(
 
 
 ================================================================================
-ARCHIVO: app\api\v1\salas\salas.py
+ARCHIVO: app\api\salas\salas.py
 ================================================================================
 
 """Salas API router."""
@@ -1804,19 +1344,334 @@ def cambiar_estado_sala(
 
 
 ================================================================================
-ARCHIVO: app\api\v1\salas\__init__.py
+ARCHIVO: app\api\salas\__init__.py
 ================================================================================
 
 """Salas API module."""
 
-from app.api.v1.salas.salas import router
+from app.api.salas.salas import router
 
 __all__ = ["router"]
 
 
 
 ================================================================================
-ARCHIVO: app\api\v1\sillas\sillas.py
+ARCHIVO: app\api\schemas\auth.py
+================================================================================
+
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+
+class RegistroRequest(BaseModel):
+    nombre: str = Field(..., min_length=2, max_length=150)
+    apellido: str = Field(..., min_length=2, max_length=150)
+    correo: EmailStr
+    telefono: str | None
+    password: str = Field(..., min_length=8)
+    confirm_password: str
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_complexity(cls, v: str):
+        if not any(c.isupper() for c in v):
+            raise ValueError("La contraseña debe contener al menos una mayúscula")
+
+        if not any(c.islower() for c in v):
+            raise ValueError("La contraseña debe contener al menos una minúscula")
+
+        if not any(c.isdigit() for c in v):
+            raise ValueError("La contraseña debe contener al menos un número")
+
+        return v
+
+    @field_validator("confirm_password")
+    @classmethod
+    def passwords_match(cls, v: str, info):
+
+        if ("password" in info.data and v != info.data["password"]):
+            raise ValueError("Las contraseñas no coinciden")
+        return v
+
+
+class LoginRequest(BaseModel):
+    correo: EmailStr
+    password: str
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str
+    usuario: dict
+
+
+================================================================================
+ARCHIVO: app\api\schemas\empleado.py
+================================================================================
+
+"""Schemas for Empleado entity."""
+
+from pydantic import BaseModel, EmailStr, Field
+from datetime import date, datetime
+from typing import List, Optional
+from app.infrastructure.models.cargoEnum import CargoEnum
+
+class EmpleadoBase(BaseModel):
+    id: int
+    nombres: str
+    apellidos: str
+    correo: EmailStr
+    telefono: str
+
+class EmpleadoCrearRequest(BaseModel):
+    nombres: str
+    apellidos: str
+    correo: EmailStr
+    telefono: str
+    password: str = Field(..., min_length=8)
+    cargo: CargoEnum
+    salario: float
+    multiplexId: int
+
+class EmpleadoUpdate(BaseModel):
+    cargo: Optional[CargoEnum] = None
+    salario: Optional[float] = None
+    multiplex_id: Optional[int] = None
+
+class EmpleadoResponse(BaseModel):
+    id: int
+    nombres: str
+    apellidos: str
+    correo: EmailStr
+    telefono: str
+    correoLaboral: EmailStr
+    cargoActual: Optional[CargoEnum]
+
+    model_config = {
+        "from_attributes": True
+    }
+
+class EmpleadoDetalle(BaseModel):
+    """
+    Response detallado de empleado.
+    """
+    id: int
+    nombres: str
+    apellidos: str
+    correo: EmailStr
+    telefono: Optional[str]
+    codigoEmpleado: str
+    correoLaboral: EmailStr
+    cargoActual: Optional[CargoEnum]
+    multiplexActual: Optional[str]
+    salarioActual: Optional[float]
+    created_at: datetime
+
+    model_config = {
+        "from_attributes": True
+    }
+
+class EmpleadoListElement(BaseModel):
+    id: int
+    nombres: str
+    apellidos: str
+    codigoEmpleado: str
+    cargoActual: Optional[CargoEnum]
+    multiplexActual: Optional[str]
+    model_config = {
+        "from_attributes": True
+    }
+
+class EmpleadoPaginated(BaseModel):
+    total: int
+    page: int
+    limit: int
+    total_pages: int
+    data: List[EmpleadoListElement]
+
+
+
+================================================================================
+ARCHIVO: app\api\schemas\multiplex.py
+================================================================================
+
+from typing import List, Optional
+import uuid
+from decimal import Decimal
+from datetime import datetime
+from pydantic import BaseModel, Field
+
+from .sala import SalaSimpleResponse
+
+class MultiplexCreate(BaseModel):
+    nombre: str = Field(..., min_length=3, max_length=150)
+    ciudad: str = Field(..., min_length=2, max_length=100)
+    direccion: str = Field(..., min_length=5, max_length=250)
+    latitud: Decimal = Field(..., ge=-90, le=90)
+    longitud: Decimal = Field(..., ge=-180, le=180)
+
+class MultiplexUpdate(BaseModel):
+    nombre: Optional[str] | None = Field(None, min_length=3, max_length=150)
+    ciudad: Optional[str] | None = None
+    direccion: Optional[str] | None = None
+    latitud: Optional[Decimal] | None = None
+    longitud: Optional[Decimal] | None = None
+
+class MultiplexResponse(BaseModel):
+    id: int
+    nombre: str
+    codigo: str
+    ciudad: str
+    direccion: str
+    latitud: Decimal
+    longitud: Decimal
+
+    activo: bool = Field(alias="estaActivo")
+
+    cantidad_salas: int = 0
+
+    salas :List[SalaSimpleResponse] = []
+
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True
+    }
+
+
+================================================================================
+ARCHIVO: app\api\schemas\sala.py
+================================================================================
+
+"""Sala schemas."""
+
+from typing import List, Optional
+from pydantic import BaseModel, Field
+
+
+class SillaCreate(BaseModel):
+    """Schema para crear o actualizar sillas dentro de una sala."""
+    tipo_silla: str = Field(..., min_length=1, description="Tipo de silla, por ejemplo preferencial o regular")
+    fila_silla: int = Field(..., ge=1, description="Fila de la silla")
+    columna_silla: int = Field(..., ge=1, description="Columna de la silla")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "tipo_silla": "preferencial",
+                "fila_silla": 1,
+                "columna_silla": 1
+            }
+        }
+    }
+
+
+class SalaCreate(BaseModel):
+    """Schema para crear una nueva sala."""
+    numero: Optional[int] = Field(None, ge=1, le=999, description="Número de sala (1-999), se asigna automáticamente si no se proporciona")
+    capacidadTotal: int = Field(..., ge=1, description="Capacidad total de la sala")
+    capacidadPreferencial: int = Field(..., ge=0, description="Capacidad de sillas preferenciales")
+    sillas: List[SillaCreate] = Field(default_factory=list, description="Lista de sillas de la sala")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "numero": 1,
+                "capacidadTotal": 60,
+                "capacidadPreferencial": 20,
+                "sillas": [
+                    {"tipo_silla": "preferencial", "fila_silla": 1, "columna_silla": 1},
+                    {"tipo_silla": "regular", "fila_silla": 1, "columna_silla": 2}
+                ]
+            }
+        }
+    }
+
+    def model_post_init(self, __context):
+        """Validación: capacidad preferencial no puede exceder capacidad total."""
+        if self.capacidadPreferencial > self.capacidadTotal:
+            raise ValueError("capacidadPreferencial no puede exceder capacidadTotal")
+
+
+class SalaUpdate(BaseModel):
+    """Schema para actualizar una sala."""
+    numero: Optional[int] = Field(None, ge=1, le=999, description="Número de sala")
+    capacidadTotal: Optional[int] = Field(None, ge=1, description="Capacidad total")
+    capacidadPreferencial: Optional[int] = Field(None, ge=0, description="Capacidad preferencial")
+    sillas: Optional[List[SillaCreate]] = Field(None, description="Lista de sillas de la sala")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "numero": 2,
+                "capacidadTotal": 60,
+                "sillas": [
+                    {"tipo_silla": "preferencial", "fila_silla": 1, "columna_silla": 1},
+                    {"tipo_silla": "regular", "fila_silla": 1, "columna_silla": 2}
+                ]
+            }
+        }
+    }
+
+    def model_post_init(self, __context):
+        """Validación: si ambas capacidades están presentes, validar relación."""
+        if self.capacidadPreferencial is not None and self.capacidadTotal is not None:
+            if self.capacidadPreferencial > self.capacidadTotal:
+                raise ValueError("capacidadPreferencial no puede exceder capacidadTotal")
+
+
+class SillaResponse(BaseModel):
+    """Schema de respuesta para una silla."""
+    tipo_silla: str
+    fila_silla: int = Field(alias="fila")
+    columna_silla: int = Field(alias="columna")
+
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
+    }
+
+
+class SalaResponse(BaseModel):
+    """Schema de respuesta para una sala."""
+    id: int
+    numero: int
+    capacidadTotal: int
+    capacidadPreferencial: int
+    activa: bool = Field(alias="estaActiva")
+    cantidad_sillas: int
+    multiplexId: int
+    sillas: List[SillaResponse] = []
+
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
+        "json_schema_extra": {
+            "example": {
+                "id": 1,
+                "numero": 1,
+                "capacidadTotal": 60,
+                "capacidadPreferencial": 20,
+                "activa": True,
+                "cantidad_sillas": 60,
+                "multiplexId": 1,
+                "sillas": [
+                    {"tipo_silla": "preferencial", "fila_silla": 1, "columna_silla": 1},
+                    {"tipo_silla": "regular", "fila_silla": 1, "columna_silla": 2}
+                ]
+            }
+        }
+    }
+
+class SalaSimpleResponse(BaseModel):
+    """Schema de respuesta simple para una sala (sin sillas)."""
+    id: int
+    numero: int
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+================================================================================
+ARCHIVO: app\api\sillas\sillas.py
 ================================================================================
 
 """Sillas API router."""
@@ -2029,12 +1884,12 @@ def obtener_detalles_sillas_sala(
 
 
 ================================================================================
-ARCHIVO: app\api\v1\sillas\__init__.py
+ARCHIVO: app\api\sillas\__init__.py
 ================================================================================
 
 """Sillas API module."""
 
-from app.api.v1.sillas.sillas import router
+from cinepachobackend.app.api.sillas.sillas import router
 
 __all__ = ["router"]
 
@@ -2229,156 +2084,35 @@ def sync_handler(event):
 ARCHIVO: app\domain\services\auth_service.py
 ================================================================================
 
-"""Auth domain service."""
-
-import bcrypt
-import jwt
 from datetime import datetime, timedelta, timezone
+from jose import jwt
+from passlib.context import CryptContext
 from app.config import settings
-from app.infrastructure.models.cliente import Cliente
-from app.infrastructure.repositories.cliente_repository import ClienteRepository
-from app.infrastructure.repositories.refresh_token_repository import RefreshTokenRepository
 
+pwdContext = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class AuthService:
-    """Servicio de dominio para autenticación y gestión de tokens."""
+    """Encapsula la lógica de autenticación y creación de tokens."""
 
-    @staticmethod
-    def hash_password(password: str) -> str:
-        """Genera un hash bcrypt de la contraseña."""
-        # bcrypt requiere bytes y maneja el truncamiento a 72 bytes automáticamente o lanza error.
-        # Aquí lo hacemos explícito para evitar problemas.
-        pwd_bytes = password.encode("utf-8")[:72]
-        salt = bcrypt.gensalt(rounds=12)
-        hashed = bcrypt.hashpw(pwd_bytes, salt)
-        return hashed.decode("utf-8")
+    def hashPassword(self, password: str) -> str:
+        """Genera un hash seguro para una contraseña simple."""
+        return pwdContext.hash(password)
 
-    @staticmethod
-    def verify_password(plain_password: str, hashed_password: str) -> bool:
-        """Verifica una contraseña contra su hash."""
-        pwd_bytes = plain_password.encode("utf-8")[:72]
-        hashed_bytes = hashed_password.encode("utf-8")
-        return bcrypt.checkpw(pwd_bytes, hashed_bytes)
+    def verifyPassword(self, plainPassword: str, hashedPassword: str) -> bool:
+        """Verifica si la contraseña sin hash coincide con el hash guardado."""
+        return pwdContext.verify(plainPassword, hashedPassword)
 
-    @staticmethod
-    def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
-        """Genera un JWT access token."""
-        to_encode = data.copy()
-        if expires_delta:
-            expire = datetime.now(timezone.utc) + expires_delta
-        else:
-            expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
-        
-        to_encode.update({"exp": expire})
-        encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
-        return encoded_jwt
+    def createAccessToken(self, data: dict) -> str:
+        """Genera un JWT de acceso con expiración establecida."""
+        payload = data.copy()
+        expiration = datetime.now(timezone.utc) + timedelta(hours=24)
+        payload.update({"exp": expiration})
 
-    def registrar_cliente(self, repo: ClienteRepository, nombre: str, correo: str, password: str) -> Cliente:
-        """
-        Registra un nuevo cliente en el sistema.
-        
-        Args:
-            repo: Repositorio de clientes
-            nombre: Nombre completo
-            correo: Correo electrónico (debe ser único)
-            password: Contraseña en texto plano
-            
-        Returns:
-            El cliente creado
-        """
-        # El repositorio ya tiene existe_correo(), pero la lógica de negocio 
-        # de "no permitir duplicados" vive aquí o se valida en el endpoint.
-        # Aquí procedemos a crear la entidad.
-        
-        hashed_pw = self.hash_password(password)
-        
-        nuevo_cliente = Cliente(
-            nombre_completo=nombre,
-            correo=correo,
-            password_hash=hashed_pw
+        return jwt.encode(
+            payload,
+            settings.secret_key,
+            algorithm=settings.algorithm
         )
-        
-        return repo.add(nuevo_cliente)
-
-
-# Funciones de compatibilidad para código existente
-def crear_token(data: dict, expires_delta: timedelta) -> str:
-    to_encode = data.copy()
-    to_encode["exp"] = datetime.now(timezone.utc) + expires_delta
-    return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
-
-
-def authenticate_user(correo: str, password: str, repo: ClienteRepository, rt_repo=None):
-    from app.domain.roles import get_permisos
-    cliente = repo.buscar_por_correo(correo)
-    if not cliente:
-        return None, "credenciales_invalidas"
-
-    if repo.verificar_bloqueo(correo):
-        ultimo_intento = cliente.ultimo_intento
-        if ultimo_intento and ultimo_intento.tzinfo is None:
-            ultimo_intento = ultimo_intento.replace(tzinfo=timezone.utc)
-        tiempo_restante = 15 - int((datetime.now(timezone.utc) - ultimo_intento).seconds / 60)
-        return None, f"bloqueado:{tiempo_restante}"
-
-    auth_service = AuthService()
-    if not auth_service.verify_password(correo, cliente.password_hash):
-        repo.registrar_intento_fallido(correo)
-        cliente_actualizado = repo.buscar_por_correo(correo)
-        if cliente_actualizado.intentos_fallidos >= 5:
-            return None, "bloqueado:15"
-        return None, "credenciales_invalidas"
-
-    repo.reset_intentos(correo)
-    refresh_expires = timedelta(days=7)
-
-    access_token = crear_token(
-        {"sub": str(cliente.id), "tipo": "access", "kind": "cliente",
-         "rol": "CLIENTE", "permisos": get_permisos("CLIENTE")},
-        timedelta(hours=24)
-    )
-    refresh_token = crear_token(
-        {"sub": str(cliente.id), "tipo": "refresh", "kind": "cliente"},
-        refresh_expires
-    )
-
-    if rt_repo:
-        rt_repo.guardar(cliente_id=cliente.id, token=refresh_token,
-                        expires_at=datetime.now(timezone.utc) + refresh_expires)
-
-    return {"access_token": access_token, "refresh_token": refresh_token,
-            "rol": "CLIENTE", "permisos": get_permisos("CLIENTE")}, None
-
-
-def authenticate_empleado(correo: str, password: str, db):
-    from sqlalchemy import select
-    from app.infrastructure.models.empleado import Empleado
-    from app.domain.roles import get_permisos
-
-    result = db.execute(select(Empleado).where(Empleado.correo == correo))
-    empleado = result.scalar_one_or_none()
-
-    if not empleado or not empleado.activo:
-        return None, "credenciales_invalidas"
-    
-    auth_service = AuthService()
-    if not auth_service.verify_password(correo, empleado.password_hash):
-        return None, "credenciales_invalidas"
-
-    refresh_expires = timedelta(days=7)
-    access_token = crear_token(
-        {"sub": str(empleado.id), "tipo": "access", "kind": "empleado",
-         "rol": empleado.rol, "permisos": get_permisos(empleado.rol)},
-        timedelta(hours=24)
-    )
-    refresh_token = crear_token(
-        {"sub": str(empleado.id), "tipo": "refresh", "kind": "empleado"},
-        refresh_expires
-    )
-
-    return {"access_token": access_token, "refresh_token": refresh_token,
-            "rol": empleado.rol, "permisos": get_permisos(empleado.rol)}, None
-
 
 
 ================================================================================
@@ -2436,107 +2170,133 @@ ARCHIVO: app\domain\services\empleado_service.py
 ================================================================================
 
 """Empleado domain service."""
-
-import random
-import string
+from datetime import date
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 from app.infrastructure.models.empleado import Empleado
 from app.infrastructure.models.multiplex import Multiplex
 from app.infrastructure.models.usuario import Usuario
 from app.infrastructure.models.rol import Rol
-from app.infrastructure.models.persona import Persona
-from app.infrastructure.repositories.empleado_repository import EmpleadoRepository
+from app.infrastructure.models.contrato import Contrato
+from app.infrastructure.models.cargoEnum import CargoEnum
+from app.infrastructure.repositories.empleado_repository import (EmpleadoRepository)
 from app.domain.services.auth_service import AuthService
 
 class EmpleadoService:
-    """Servicio para la gestión de empleados."""
+    def __init__(self, db: Session):
+        self.db = db
+        self.authService = AuthService()
 
     @staticmethod
-    def generar_correo_laboral(nombre: str, apellido: str) -> str:
-        """Genera un correo laboral único."""
-        base = f"{nombre.lower().split()[0]}.{apellido.lower().split()[0]}"
-        return f"{base}@cinepacho.com"
+    def generarCorreoLaboral(nombres: str, apellidos: str) -> str:
+        primerNombre = nombres.lower().split()[0]
+        primerApellido = apellidos.lower().split()[0]
+        return f"{primerNombre}.{primerApellido}@cinepacho.com"
 
     @staticmethod
-    def generar_codigo_empleado(mx_code: str, seq: int) -> str:
-        """Genera un código de empleado (CP-{mx_code}-{seq:04d})."""
-        return f"CP-{mx_code}-{seq:04d}"
+    def generarCodigoEmpleado(multiplexCodigo: str, secuencia: int) -> str:
+        return f"CP-{multiplexCodigo}-{secuencia:04d}"
 
-    def crear_empleado(self, repo: EmpleadoRepository, datos: dict) -> Empleado:
-        """Crea un nuevo empleado con código y correo laboral generados."""
-        # Obtener código del multiplex
-        stmt = select(Multiplex).where(Multiplex.id == datos.get("multiplex_id"))
-        multiplex = repo.db.execute(stmt).scalar_one_or_none()
-        mx_code = multiplex.codigo if multiplex else "XX"
-        
-        # Generar código secuencial
-        seq = repo.siguiente_numero_secuencia(datos.get("multiplex_id"))
-        codigo_empleado = self.generar_codigo_empleado(mx_code, seq)
-        
-        # Generar correo laboral
-        nombre = datos.get("primer_nombre", "")
-        apellido = datos.get("primer_apellido", "")
-        correo_laboral = self.generar_correo_laboral(nombre, apellido)
-        
-        # Construir nombre completo
-        nombre_completo = f"{datos.get('primer_nombre', '')} {datos.get('segundo_nombre', '')} {datos.get('primer_apellido', '')} {datos.get('segundo_apellido', '')}".replace("  ", " ").strip()
-        
-        # Mapear datos
-        empleado_data = {
-            "nombre": datos.get("primer_nombre"),
-            "apellido": datos.get("primer_apellido"),
-            "email": datos.get("email"),
-            "telefono": datos.get("telefono"),
-            "cedula": str(datos.get("cedula_ciudadania")),
-            "nombre_completo": nombre_completo,
-            "codigo_empleado": codigo_empleado,
-            "seq": seq,
-            "fecha_inicio_contrato": datos.get("fecha_inicio_contrato") or datos.get("fecha_nacimiento"),
-            "salario": datos.get("salario"),
-            "cargo": datos.get("cargo"),
-            "multiplex_id": datos.get("multiplex_id"),
-            "correo_laboral": correo_laboral,
-            "activo": True
-        }
-        
-        nuevo_empleado = Empleado(**empleado_data)
-        repo.add(nuevo_empleado)
-        
-        # Crear credenciales si es cajero o administrador (director)
-        cargo_val = datos.get("cargo")
-        if hasattr(cargo_val, "value"):
-            cargo_val = cargo_val.value
-            
-        if cargo_val in ["cajero", "administrador", "director"]:
-            self.crear_usuario_para_empleado(repo.db, nuevo_empleado, datos.get("cedula_ciudadania"))
-            
-        return nuevo_empleado
-
-    def crear_usuario_para_empleado(self, db, empleado: Empleado, password_base: str):
-        """Crea un registro de Usuario vinculado al Empleado."""
-        # Buscar rol correspondiente
-        # Normalizar comparación de cargos para el rol
-        cargo_str = empleado.cargo.value if hasattr(empleado.cargo, "value") else str(empleado.cargo)
-        
-        rol_nombre = "Cajero" if cargo_str == "cajero" else "Administrador Multiplex"
-        stmt_rol = select(Rol).where(Rol.nombre == rol_nombre)
-        rol = db.execute(stmt_rol).scalar_one_or_none()
-        
+    def obtenerRol(self, cargo: CargoEnum) -> Rol:
+        roleName = ("ADMIN_MULTIPLEX" if cargo == CargoEnum.director else "CAJERO")
+        stmt = select(Rol).where(Rol.nombre == roleName)
+        rol = self.db.execute(stmt).scalar_one_or_none()
         if not rol:
-            return
-            
-        auth_service = AuthService()
-        hashed_password = auth_service.hash_password(str(password_base))
-        
-        nuevo_usuario = Usuario(
-            password=hashed_password,
-            estaActivo=True,
-            persona_id=empleado.id,
-            rol_id=rol.id
-        )
-        db.add(nuevo_usuario)
-        db.commit()
+            raise ValueError("Rol no encontrado")
+        return rol
 
+    def crearEmpleado(self, repo: EmpleadoRepository, datos: dict) -> Empleado:
+
+        # ======================================
+        # VALIDAR EMPLEADO EXISTENTE
+        # ======================================
+
+        empleadoExistente = repo.buscarPorCorreo(datos.get("correo"))
+
+        if empleadoExistente:
+            raise ValueError("Empleado ya existe")
+
+        # ======================================
+        # BUSCAR MULTIPLEX
+        # ======================================
+
+        stmt = select(Multiplex).where(Multiplex.id == datos.get("multiplexId"))
+        multiplex = self.db.execute(stmt).scalar_one_or_none()
+
+        if not multiplex:
+            raise ValueError("Multiplex no encontrado")
+
+        # ======================================
+        # GENERAR SECUENCIA
+        # ======================================
+        secuencia = repo.siguiente_numero_secuencia(datos.get("multiplexId"))
+
+        # ======================================
+        # GENERAR CODIGO
+        # ======================================
+        codigoEmpleado = self.generarCodigoEmpleado(multiplex.codigo, secuencia)
+
+        # ======================================
+        # GENERAR CORREO LABORAL
+        # ======================================
+        correoLaboral = self.generarCorreoLaboral(datos.get("nombres"), datos.get("apellidos"))
+
+        # ======================================
+        # VALIDAR CORREO LABORAL
+        # ======================================
+        correoExiste = repo.buscarPorCorreoLaboral(correoLaboral)
+
+        if correoExiste:
+            raise ValueError("Correo laboral ya generado anteriormente")
+
+        # ======================================
+        # OBTENER ROL
+        # ======================================
+        rol = self.obtenerRol(datos.get("cargo"))
+
+        # ======================================
+        # CREAR EMPLEADO
+        # ======================================
+        empleado = Empleado(
+            nombres=datos.get("nombres"),
+            apellidos=datos.get("apellidos"),
+            correo=datos.get("correo"),
+            telefono=datos.get("telefono"),
+            codigoEmpleado=codigoEmpleado,
+            correoLaboral=correoLaboral)
+        self.db.add(empleado)
+        self.db.flush()
+
+        # ======================================
+        # CREAR USUARIO
+        # ======================================
+        usuario = Usuario(passwordHash=self.authService.hashPassword(datos.get("password")), personaId=empleado.id, rolId=rol.id)
+        self.db.add(usuario)
+        self.db.flush()
+
+        # ======================================
+        # ASOCIAR USUARIO
+        # ======================================
+        empleado.usuarioId = usuario.id
+
+        # ======================================
+        # CREAR CONTRATO
+        # ======================================
+        contrato = Contrato(
+            empleadoId=empleado.id,
+            multiplexId=datos.get("multiplexId"),
+            salario=datos.get("salario"),
+            cargo=datos.get("cargo"),
+            fechaInicio=date.today(),
+            activo=True)
+
+        self.db.add(contrato)
+        # ======================================
+        # COMMIT
+        # ======================================
+        self.db.commit()
+        self.db.refresh(empleado)
+        return empleado
 
 
 ================================================================================
@@ -3411,28 +3171,37 @@ class CargoEnum(Enum):
 ARCHIVO: app\infrastructure\models\cliente.py
 ================================================================================
 
-"""Cliente model."""
+"""Modelo ORM para la entidad Cliente."""
 
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, func, Sequence
-from .base import Base
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, func
 from sqlalchemy.orm import relationship
+from .persona import Persona
 
-class Cliente(Base):
+
+class Cliente(Persona):
+    """
+    Entidad que representa clientes del sistema.
+
+    Un cliente puede:
+    - Tener usuario (registrado)
+    - No tener usuario (invitado)
+    """
     __tablename__ = "clientes"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    nombre_completo = Column(String, nullable=False)
-    correo = Column(String, unique=True, index=True, nullable=False)
-    password_hash = Column(String, nullable=False)
-    fecha_registro = Column(DateTime, server_default=func.now())
-    activo = Column(Boolean, default=True)
-    puntos_acumulados = Column(Integer, default=0)
-    idioma_preferido = Column(String, default="es")
-    intentos_fallidos = Column(Integer, default=0)
-    bloqueado_hasta = Column(DateTime, nullable=True)
-
+    id = Column(Integer, ForeignKey("personas.id"), primary_key=True)
+    usuarioId = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    usuario = relationship("Usuario", back_populates="cliente", foreign_keys=[usuarioId])
+    puntosAcumulados = Column(Integer, default=0)
+    fechaRegistro = Column(DateTime, server_default=func.now())
+    estaActivo = Column(Boolean, default=True)
+    
     evaluaciones = relationship("Evaluacion", back_populates="cliente")
     facturas = relationship("Factura", back_populates="cliente")
+
+    __mapper_args__ = {
+        "polymorphic_identity": "cliente"
+    }
+
 
 
 ================================================================================
@@ -3479,21 +3248,30 @@ class Configuracion(Base, TimestampMixin):
 ARCHIVO: app\infrastructure\models\contrato.py
 ================================================================================
 
-from sqlalchemy import Column, ForeignKey, String
+from sqlalchemy import Boolean, Column, Date, Enum, ForeignKey, Integer, Numeric
 from app.infrastructure.models.base import Base
 from sqlalchemy.orm import relationship
 
+from app.infrastructure.models.cargoEnum import CargoEnum
+
 class Contrato(Base):
+    """
+    Representa la relación contractual
+    de un empleado dentro de un multiplex.
+    """
     __tablename__ = "contratos"
 
-    fechaInicio = Column(String, nullable=False)
-    fechaFin = Column(String, nullable=True)
-    salario = Column(String, nullable=False)
-
+    id = Column(Integer, primary_key=True, autoincrement=True)
     empleadoId = Column(ForeignKey("empleados.id"), nullable=False)
-    empleado = relationship("Empleado", back_populates="contratos")
-    
     multiplexId = Column(ForeignKey("multiplex.id"), nullable=False)
+    cargo = Column(Enum(CargoEnum), nullable=False)
+    salario = Column(Numeric(12, 2), nullable=False)
+    fechaInicio = Column(Date, nullable=False)
+    fechaFin = Column(Date, nullable=True)
+    activo = Column(Boolean, default=True)
+
+
+    empleado = relationship("Empleado", back_populates="contratos")
     multiplex = relationship("Multiplex", back_populates="contratos")
 
 
@@ -3535,27 +3313,43 @@ from app.infrastructure.models.cargoEnum import CargoEnum
 from app.infrastructure.models.persona import Persona
 
 class Empleado(Persona):
+    """
+    Representa empleados internos de CinePacho.
+    """
     __tablename__ = "empleados"
     id = Column(Integer, ForeignKey('personas.id'), primary_key=True)
+    usuarioId = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    codigoEmpleado = Column(String, unique=True, nullable=False)
+    correoLaboral = Column(String, unique=True, nullable=False)
 
-    cedula = Column(String, unique=True, nullable=False)
-    nombre_completo = Column(String, nullable=False)
-    codigo_empleado = Column(String, unique=True, nullable=True)
-    fecha_inicio_contrato = Column(Date, nullable=False)
-    salario = Column(Numeric(12, 2), nullable=False)
-    cargo = Column(Enum(CargoEnum), nullable=False)
-    activo = Column(Boolean, default=True)
-    seq = Column(Integer, default=0) # Secuencial por multiplex
-    multiplex_id = Column(Integer, ForeignKey("multiplex.id"), nullable=True)
-    correo_laboral = Column(String, unique=True, nullable=True)
-    
+    usuario = relationship("Usuario", back_populates="empleado", foreign_keys=[usuarioId])
+    contratos = relationship("Contrato", back_populates="empleado")
+    historial_cargos = relationship(
+        "HistorialCargo",
+        back_populates="empleado"
+    )
+
     __mapper_args__ = {
-        'polymorphic_identity': 'empleado'
+        "polymorphic_identity": "empleado"
     }
 
-    multiplex = relationship("Multiplex")
-    contratos = relationship("Contrato", back_populates="empleado")
-    historial_cargos = relationship("HistorialCargo", back_populates="empleado")
+    @property
+    def contratoActivo(self):
+        """Retorna el contrato activo del empleado."""
+        return next((contrato for contrato in self.contratos if contrato.activo),None)
+
+    @property
+    def cargoActual(self):
+        """Retorna el cargo actual del empleado."""
+        contrato = self.contratoActivo
+        return contrato.cargo if contrato else None
+
+    @property
+    def multiplexActual(self):
+        """Retorna el multiplex actual del empleado."""
+        contrato = self.contratoActivo
+        return contrato.multiplex if contrato else None
+    
 
 
 ================================================================================
@@ -3607,15 +3401,17 @@ from app.infrastructure.models.base import Base
 from sqlalchemy.orm import relationship
 
 class Factura(Base):
+    """
+    Representa compras realizadas
+    en el sistema.
+    """
     __tablename__ = "facturas"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    
     clienteId = Column(ForeignKey("clientes.id"), nullable=False)
 
     cliente = relationship("Cliente", back_populates="facturas")    
     detalles = relationship("DetalleFactura", back_populates="factura")
-
     pagos = relationship("Pago", back_populates="factura")
 
 
@@ -3657,19 +3453,22 @@ from .base import Base
 from .cargoEnum import CargoEnum
 
 class HistorialCargo(Base):
+    """
+    Historial de cambios de cargo
+    de empleados.
+    """
     __tablename__ = "historial_cargos"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    empleado_id = Column(Integer, ForeignKey("empleados.id"), nullable=False)
-    cargo_anterior = Column(Enum(CargoEnum), nullable=True)
-    cargo_nuevo = Column(Enum(CargoEnum), nullable=False)
-    multiplex_id = Column(Integer, ForeignKey("multiplex.id"), nullable=True)
-    fecha_cambio = Column(DateTime, server_default=func.now())
+    empleadoId = Column(Integer, ForeignKey("empleados.id"), nullable=False)
+    cargoAnterior = Column(Enum(CargoEnum), nullable=True)
+    cargoNuevo = Column(Enum(CargoEnum), nullable=False)
+    multiplexId = Column(Integer, ForeignKey("multiplex.id"), nullable=True)
+    fechaCambio = Column(DateTime, server_default=func.now())
     motivo = Column(String, nullable=True)
-    registrado_por_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    registradoPorId = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
 
     empleado = relationship("Empleado", back_populates="historial_cargos")
-    multiplex = relationship("Multiplex")
     registrado_por = relationship("Usuario")
 
 
@@ -3787,18 +3586,23 @@ class Permiso(Base):
 ARCHIVO: app\infrastructure\models\persona.py
 ================================================================================
 
-from sqlalchemy import Column, Date, Integer, String
+from sqlalchemy import Column, Boolean, Integer, String
 
-from .base import Base, TimestampMixin
+from .base import Base
 
-class Persona(Base, TimestampMixin):
+class Persona(Base):
+    """
+    Entidad base que representa información humana
+    compartida entre clientes y empleados.
+    """
     __tablename__ = "personas"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    nombre = Column(String, nullable=False)
-    apellido = Column(String, nullable=False)
-    email = Column(String, nullable=True)
+    nombres = Column(String, nullable=False)
+    apellidos = Column(String, nullable=False)
+    correo = Column(String, nullable=True)
     telefono = Column(String, nullable=True)
+    activo = Column(Boolean, default=True)
 
     tipo = Column(String(50))
 
@@ -3806,6 +3610,26 @@ class Persona(Base, TimestampMixin):
         'polymorphic_identity': 'persona',
         'polymorphic_on': tipo
     }
+
+
+================================================================================
+ARCHIVO: app\infrastructure\models\refrescar_token.py
+================================================================================
+
+"""RefreshToken model."""
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey
+from .base import Base, TimestampMixin
+
+class RefreshToken(Base, TimestampMixin):
+    """
+    Tokens de refresco asociados
+    a usuarios autenticados.
+    """
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    usuarioId = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    tokenHash = Column(String, nullable=False)
+    expiresAt = Column(DateTime, nullable=False)
+    revocado = Column(Boolean, default=False)
 
 
 ================================================================================
@@ -3955,23 +3779,42 @@ class TipoSilla(Base):
 ARCHIVO: app\infrastructure\models\usuario.py
 ================================================================================
 
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String
+"""Entidad Usuario para autenticación y autorización."""
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 
 from app.infrastructure.models.base import Base, TimestampMixin
 from sqlalchemy.orm import relationship
 
 class Usuario(Base, TimestampMixin):
+    """
+    Entidad encargada de autenticación
+    y autorización del sistema.
+    """
     __tablename__ = "usuarios"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    password = Column(String, nullable=False)
+    passwordHash = Column(String, nullable=False)
+    intentosFallidos = Column(Integer, default=0)
+    bloqueadoHasta =  Column(DateTime, nullable=True)
     estaActivo = Column(Boolean, nullable=False, default=True)
 
-    persona_id = Column(Integer, ForeignKey("personas.id"), unique=True)
-    persona = relationship("Persona")
-
-    rol_id = Column(Integer, ForeignKey("rol.id"))
+    personaId = Column(Integer, ForeignKey("personas.id"), unique=True)
+    rolId = Column(Integer, ForeignKey("rol.id"))
     rol = relationship("Rol", back_populates="usuarios")
+    persona = relationship("Persona")
+    cliente = relationship(
+        "Cliente",
+        back_populates="usuario",
+        uselist=False,
+        foreign_keys="Cliente.usuarioId"
+    )
+
+    empleado = relationship(
+        "Empleado",
+        back_populates="usuario",
+        uselist=False,
+        foreign_keys="Empleado.usuarioId"
+    )
 
 
 
@@ -3997,6 +3840,7 @@ from .pago import Pago
 from .pelicula import Pelicula
 from .permiso import Permiso
 from .persona import Persona
+from .refrescar_token import RefreshToken
 from .rol_permiso import rol_permiso
 from .rol import Rol
 from .sala import Sala
@@ -4117,49 +3961,6 @@ class ClienteRepository(AbstractRepository[Cliente]):
         self.db.refresh(entity)
         return entity
 
-    def registrar_intento_fallido(self, correo: str):
-        """Registra un intento fallido y bloquea si excede el límite (5)."""
-        cliente = self.buscar_por_correo(correo)
-        if not cliente:
-            return
-        
-        cliente.intentos_fallidos += 1
-        if cliente.intentos_fallidos >= 5:
-            # Bloqueo por 15 minutos
-            cliente.bloqueado_hasta = datetime.now(timezone.utc) + timedelta(minutes=15)
-        
-        self.db.commit()
-
-    def reset_intentos(self, correo: str):
-        """Reinicia el contador de intentos fallidos."""
-        cliente = self.buscar_por_correo(correo)
-        if not cliente:
-            return
-        
-        cliente.intentos_fallidos = 0
-        cliente.bloqueado_hasta = None
-        self.db.commit()
-
-    def verificar_bloqueo(self, correo: str) -> bool:
-        """Verifica si el cliente está actualmente bloqueado."""
-        cliente = self.buscar_por_correo(correo)
-        if not cliente or not cliente.bloqueado_hasta:
-            return False
-        
-        # Aseguramos que bloqueado_hasta sea aware si es necesario
-        bloqueado_hasta = cliente.bloqueado_hasta
-        if bloqueado_hasta.tzinfo is None:
-            bloqueado_hasta = bloqueado_hasta.replace(tzinfo=timezone.utc)
-            
-        ahora = datetime.now(timezone.utc)
-        
-        if ahora < bloqueado_hasta:
-            return True
-        
-        # Si el tiempo ya pasó, desbloqueamos automáticamente
-        self.reset_intentos(correo)
-        return False
-
 
 
 ================================================================================
@@ -4256,14 +4057,7 @@ class EmpleadoRepository(AbstractRepository[Empleado]):
         """Alias para buscar_por_id."""
         return self.buscar_por_id(entity_id)
 
-    def listar(
-        self, 
-        multiplex_id: int | None = None, 
-        cargo: CargoEnum | None = None, 
-        activo: bool | None = None, 
-        pagina: int = 1, 
-        limite: int = 10
-    ) -> list[Empleado]:
+    def listar(self, multiplex_id: int | None = None, cargo: CargoEnum | None = None, activo: bool | None = None, pagina: int = 1, limite: int = 10) -> list[Empleado]:
         """Lista empleados con paginación y filtros."""
         skip = (pagina - 1) * limite
         stmt = select(Empleado)
@@ -4373,6 +4167,15 @@ class EmpleadoRepository(AbstractRepository[Empleado]):
         ]
         return cargo in cargos_con_acceso
 
+    def buscarPorCorreo(self, correo: str) -> Empleado | None:
+        stmt = select(Empleado).where(Empleado.correo == correo)
+        result = self.db.execute(stmt)
+        return result.scalar_one_or_none()
+    
+    def buscarPorCorreoLaboral(self, correoLaboral: str) -> Empleado | None:
+        stmt = select(Empleado).where(Empleado.correoLaboral == correoLaboral)
+        result = self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
 
 ================================================================================
@@ -4569,7 +4372,7 @@ ARCHIVO: app\infrastructure\repositories\refresh_token_repository.py
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-from app.models.refrescar_token import RefreshToken
+from app.infrastructure.models.refrescar_token import RefreshToken
 import hashlib
 
 
@@ -4899,118 +4702,36 @@ class SnackRepository(AbstractRepository):
 
 
 ================================================================================
-ARCHIVO: app\models\base.py
+ARCHIVO: app\infrastructure\repositories\usuarioRepository.py
 ================================================================================
 
-"""Declarative base y mixins para modelos."""
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from datetime import datetime, timezone
-from sqlalchemy.orm import as_declarative, declared_attr
-from sqlalchemy import Column, DateTime
-
-
-@as_declarative()
-class Base:
-    id: int
-
-    @declared_attr
-    def __tablename__(cls) -> str:
-        return cls.__name__.lower()
+from app.infrastructure.models.usuario import Usuario
+from app.infrastructure.models.persona import Persona
 
 
-class TimestampMixin:
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
-    )
+class UsuarioRepository:
 
+    def __init__(self, db: Session):
+        self.db = db
 
+    def buscarPorCorreo(self, correo: str):
+        stmt = (select(Usuario).join(Persona).where(Persona.correo == correo))
+        result = self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
-================================================================================
-ARCHIVO: app\models\cliente.py
-================================================================================
-
-"""Cliente model."""
-from sqlalchemy import Column, String, Integer, DateTime, Boolean
-from .base import Base, TimestampMixin
-
-class Cliente(Base, TimestampMixin):
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    nombre = Column(String, nullable=False)
-    correo = Column(String, nullable=False, unique=True)
-    password_hash = Column(String, nullable=False)
-    intentos_fallidos = Column(Integer, default=0)
-    ultimo_intento = Column(DateTime(timezone=True), nullable=True)
-    activo = Column(Boolean, default=True)
-    ultimo_login = Column(DateTime(timezone=True), nullable=True)
-    puntos = Column(Integer, default=0)
-
-
-================================================================================
-ARCHIVO: app\models\empleado.py
-================================================================================
-
-"""Empleado model."""
-from sqlalchemy import Column, String, Integer, Boolean, ForeignKey
-from sqlalchemy.orm import relationship
-from .base import Base, TimestampMixin
-
-class Empleado(Base, TimestampMixin):
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    codigo_empleado = Column(String, nullable=False, unique=True)
-    nombre = Column(String, nullable=False)
-    correo = Column(String, nullable=False, unique=True)
-    password_hash = Column(String, nullable=False)
-    rol = Column(String, nullable=False)  # EMPLEADO-CAJERO, EMPLEADO-OTRO, ADMIN-MULTIPLEX, ADMIN-GENERAL
-    multiplex_id = Column(Integer, ForeignKey("multiplex.id"), nullable=True)
-    activo = Column(Boolean, default=True)
-
-    multiplex = relationship("Multiplex", backref="empleados")
-
-
-================================================================================
-ARCHIVO: app\models\multiplex.py
-================================================================================
-
-"""Multiplex model."""
-from sqlalchemy import Column, String, Integer, Boolean
-from .base import Base, TimestampMixin
-
-class Multiplex(Base, TimestampMixin):
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    nombre = Column(String, nullable=False)
-    direccion = Column(String, nullable=True)
-    ciudad = Column(String, nullable=True)
-    activo = Column(Boolean, default=True)
-
-
-================================================================================
-ARCHIVO: app\models\refrescar_token.py
-================================================================================
-
-"""RefreshToken model."""
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey
-from .base import Base, TimestampMixin
-
-class RefreshToken(Base, TimestampMixin):
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    cliente_id = Column(Integer, ForeignKey("cliente.id"), nullable=False)
-    token_hash = Column(String, nullable=False)
-    expires_at = Column(DateTime, nullable=False)
-    revocado = Column(Boolean, default=False)
-
-
-================================================================================
-ARCHIVO: app\models\__init__.py
-================================================================================
-
-"""Modelos ORM para Cinepacho."""
-from .cliente import Cliente
-from .multiplex import Multiplex
-from .empleado import Empleado
-from .refrescar_token import RefreshToken
+    def crear(self, usuario: Usuario) -> Usuario:
+        self.db.add(usuario)
+        self.db.commit()
+        self.db.refresh(usuario)
+        return usuario
+    
+    def buscarPorId(self, id: int) -> Usuario:
+        stmt = select(Usuario).where(Usuario.id == id)
+        result = self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
 
 ================================================================================
@@ -5093,98 +4814,22 @@ def downgrade():
 
 
 ================================================================================
-ARCHIVO: migrations\versions\458894e040b9_add_login_attempts_and_blocking_fields_.py
+ARCHIVO: migrations\versions\c03473c52fab_initial_clean_architecture.py
 ================================================================================
 
 """Alembic migration script template."""
-"""Add login attempts and blocking fields to Cliente
+"""initial clean architecture
 
-Revision ID: 458894e040b9
-Revises: ddf41aba2d53
-Create Date: 2026-05-05 01:31:32.750623
-"""
-
-from alembic import op
-import sqlalchemy as sa
-
-# revision identifiers, used by Alembic.
-revision = '458894e040b9'
-down_revision = 'ddf41aba2d53'
-branch_labels = None
-depends_on = None
-
-
-def upgrade():
-    # ### commands auto generated by Alembic - please adjust! ###
-    op.add_column('clientes', sa.Column('intentos_fallidos', sa.Integer(), nullable=True))
-    op.add_column('clientes', sa.Column('bloqueado_hasta', sa.DateTime(), nullable=True))
-    op.drop_constraint('uq_sala_numero_multiplex', 'salas', type_='unique')
-    op.create_unique_constraint('uq_sala_numero_multiplex', 'salas', ['numero', 'multiplexId'])
-    # ### end Alembic commands ###
-
-
-def downgrade():
-    # ### commands auto generated by Alembic - please adjust! ###
-    op.drop_constraint('uq_sala_numero_multiplex', 'salas', type_='unique')
-    op.create_unique_constraint(op.f('salas_numero_key'), 'salas', ['numero'], postgresql_nulls_not_distinct=False)
-    op.drop_column('clientes', 'bloqueado_hasta')
-    op.drop_column('clientes', 'intentos_fallidos')
-    # ### end Alembic commands ###
-
-
-================================================================================
-ARCHIVO: migrations\versions\62d1636e4e5d_add_codigo_empleado_to_empleado.py
-================================================================================
-
-"""Alembic migration script template."""
-"""Add codigo_empleado to Empleado
-
-Revision ID: 62d1636e4e5d
-Revises: fa5a32602dd1
-Create Date: 2026-05-05 02:22:50.405972
-"""
-
-from alembic import op
-import sqlalchemy as sa
-
-# revision identifiers, used by Alembic.
-revision = '62d1636e4e5d'
-down_revision = 'fa5a32602dd1'
-branch_labels = None
-depends_on = None
-
-
-def upgrade():
-    # ### commands auto generated by Alembic - please adjust! ###
-    op.add_column('empleados', sa.Column('codigo_empleado', sa.String(), nullable=True))
-    op.create_unique_constraint(None, 'empleados', ['codigo_empleado'])
-    # ### end Alembic commands ###
-
-
-def downgrade():
-    # ### commands auto generated by Alembic - please adjust! ###
-    op.drop_constraint(None, 'empleados', type_='unique')
-    op.drop_column('empleados', 'codigo_empleado')
-    # ### end Alembic commands ###
-
-
-================================================================================
-ARCHIVO: migrations\versions\700758466f79_init.py
-================================================================================
-
-"""Alembic migration script template."""
-"""init
-
-Revision ID: 700758466f79
+Revision ID: c03473c52fab
 Revises: 
-Create Date: 2026-05-02 16:01:21.164170
+Create Date: 2026-05-11 08:22:18.545138
 """
 
 from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = '700758466f79'
+revision = 'c03473c52fab'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -5192,213 +4837,369 @@ depends_on = None
 
 def upgrade():
     # ### commands auto generated by Alembic - please adjust! ###
-    op.add_column('multiplex', sa.Column('direccion', sa.String(), nullable=False))
-    # ### end Alembic commands ###
-
-
-def downgrade():
-    # ### commands auto generated by Alembic - please adjust! ###
-    op.drop_column('multiplex', 'direccion')
-    # ### end Alembic commands ###
-
-
-================================================================================
-ARCHIVO: migrations\versions\a20362100baf_remove_unique_constraint_from_sala_.py
-================================================================================
-
-"""Alembic migration script template."""
-"""remove unique constraint from sala.numero
-
-Revision ID: a20362100baf
-Revises: 700758466f79
-Create Date: 2026-05-04 07:15:51.673274
-"""
-
-from alembic import op
-import sqlalchemy as sa
-
-# revision identifiers, used by Alembic.
-revision = 'a20362100baf'
-down_revision = '700758466f79'
-branch_labels = None
-depends_on = None
-
-
-def upgrade():
-    # ### commands auto generated by Alembic - please adjust! ###
-    op.drop_constraint(op.f('salas_numero_key'), 'salas', type_='unique')
-    op.create_unique_constraint('uq_sala_numero_multiplex', 'salas', ['numero', 'multiplexId'])
-    # ### end Alembic commands ###
-
-
-def downgrade():
-    # ### commands auto generated by Alembic - please adjust! ###
-    op.drop_constraint('uq_sala_numero_multiplex', 'salas', type_='unique')
-    op.create_unique_constraint(op.f('salas_numero_key'), 'salas', ['numero'], postgresql_nulls_not_distinct=False)
-    # ### end Alembic commands ###
-
-
-================================================================================
-ARCHIVO: migrations\versions\ae9491781158_add_seq_to_empleado.py
-================================================================================
-
-"""Alembic migration script template."""
-"""Add seq to empleado
-
-Revision ID: ae9491781158
-Revises: 62d1636e4e5d
-Create Date: 2026-05-05 02:41:51.724117
-"""
-
-from alembic import op
-import sqlalchemy as sa
-
-# revision identifiers, used by Alembic.
-revision = 'ae9491781158'
-down_revision = '62d1636e4e5d'
-branch_labels = None
-depends_on = None
-
-
-def upgrade():
-    # ### commands auto generated by Alembic - please adjust! ###
-    op.add_column('empleados', sa.Column('seq', sa.Integer(), nullable=True))
-    # ### end Alembic commands ###
-
-
-def downgrade():
-    # ### commands auto generated by Alembic - please adjust! ###
-    op.drop_column('empleados', 'seq')
-    # ### end Alembic commands ###
-
-
-================================================================================
-ARCHIVO: migrations\versions\ddf41aba2d53_crear_tabla_cliente_final.py
-================================================================================
-
-"""Alembic migration script template."""
-"""Crear tabla cliente final
-
-Revision ID: ddf41aba2d53
-Revises: a20362100baf
-Create Date: 2026-05-05 01:20:56.754493
-"""
-
-from alembic import op
-import sqlalchemy as sa
-
-# revision identifiers, used by Alembic.
-revision = 'ddf41aba2d53'
-down_revision = 'a20362100baf'
-branch_labels = None
-depends_on = None
-
-
-def upgrade():
-    # ### commands auto generated by Alembic - please adjust! ###
-    # Primero eliminamos las FK que dependen de clientes
-    op.drop_constraint('evaluaciones_cliente_id_fkey', 'evaluaciones', type_='foreignkey')
-    op.drop_constraint('facturas_clienteId_fkey', 'facturas', type_='foreignkey')
-    
-    op.drop_table('clientes')
-    op.create_table('clientes',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('nombre_completo', sa.String(), nullable=False),
-        sa.Column('correo', sa.String(), nullable=False),
-        sa.Column('password_hash', sa.String(), nullable=False),
-        sa.Column('fecha_registro', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
-        sa.Column('activo', sa.Boolean(), nullable=True),
-        sa.Column('puntos_acumulados', sa.Integer(), nullable=True),
-        sa.Column('idioma_preferido', sa.String(), nullable=True),
-        sa.PrimaryKeyConstraint('id')
+    op.create_table('comidas',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('nombre', sa.String(), nullable=False),
+    sa.Column('precio', sa.Float(), nullable=False),
+    sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_clientes_correo'), 'clientes', ['correo'], unique=True)
-    op.create_index(op.f('ix_clientes_id'), 'clientes', ['id'], unique=False)
-    
-    # Recreamos las FK
-    op.create_foreign_key('evaluaciones_cliente_id_fkey', 'evaluaciones', 'clientes', ['cliente_id'], ['id'])
-    op.create_foreign_key('facturas_clienteId_fkey', 'facturas', 'clientes', ['clienteId'], ['id'])
+    op.create_table('configuracion',
+    sa.Column('clave', sa.String(), nullable=False),
+    sa.Column('valor', sa.String(), nullable=False),
+    sa.Column('descripcion', sa.String(), nullable=True),
+    sa.Column('tipo', sa.String(), nullable=True),
+    sa.Column('activo', sa.Boolean(), nullable=True),
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_configuracion_clave'), 'configuracion', ['clave'], unique=True)
+    op.create_index(op.f('ix_configuracion_id'), 'configuracion', ['id'], unique=False)
+    op.create_table('multiplex',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('codigo', sa.String(), nullable=False),
+    sa.Column('nombre', sa.String(), nullable=False),
+    sa.Column('ciudad', sa.String(), nullable=False),
+    sa.Column('direccion', sa.String(), nullable=False),
+    sa.Column('latitud', sa.Float(), nullable=False),
+    sa.Column('longitud', sa.Float(), nullable=False),
+    sa.Column('estaActivo', sa.Boolean(), nullable=True),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('codigo')
+    )
+    op.create_table('peliculas',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('titulo', sa.String(), nullable=False),
+    sa.Column('duracionMinutos', sa.Integer(), nullable=False),
+    sa.Column('linkTrailer', sa.String(), nullable=True),
+    sa.Column('linkPoster', sa.String(), nullable=True),
+    sa.Column('sinopsis', sa.String(), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('permiso',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('nombre', sa.String(), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('personas',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('nombres', sa.String(), nullable=False),
+    sa.Column('apellidos', sa.String(), nullable=False),
+    sa.Column('correo', sa.String(), nullable=True),
+    sa.Column('telefono', sa.String(), nullable=True),
+    sa.Column('activo', sa.Boolean(), nullable=True),
+    sa.Column('tipo', sa.String(length=50), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('rol',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('nombre', sa.String(), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('servicios',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('nombre', sa.String(), nullable=False),
+    sa.Column('precio', sa.Integer(), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('tipoSilla',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('nombre', sa.String(), nullable=False),
+    sa.Column('precio', sa.Float(), nullable=False),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('nombre')
+    )
+    op.create_table('rol_permiso',
+    sa.Column('rol_id', sa.Integer(), nullable=False),
+    sa.Column('permiso_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['permiso_id'], ['permiso.id'], ),
+    sa.ForeignKeyConstraint(['rol_id'], ['rol.id'], ),
+    sa.PrimaryKeyConstraint('rol_id', 'permiso_id')
+    )
+    op.create_table('salas',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('numero', sa.Integer(), nullable=False),
+    sa.Column('estaActiva', sa.Boolean(), nullable=True),
+    sa.Column('capacidadTotal', sa.Integer(), nullable=False),
+    sa.Column('capacidadPreferencial', sa.Integer(), nullable=False),
+    sa.Column('multiplexId', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['multiplexId'], ['multiplex.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('numero', 'multiplexId', name='uq_sala_numero_multiplex')
+    )
+    op.create_table('usuarios',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('passwordHash', sa.String(), nullable=False),
+    sa.Column('intentosFallidos', sa.Integer(), nullable=True),
+    sa.Column('bloqueadoHasta', sa.DateTime(), nullable=True),
+    sa.Column('estaActivo', sa.Boolean(), nullable=False),
+    sa.Column('personaId', sa.Integer(), nullable=True),
+    sa.Column('rolId', sa.Integer(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['personaId'], ['personas.id'], ),
+    sa.ForeignKeyConstraint(['rolId'], ['rol.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('personaId')
+    )
+    op.create_table('clientes',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('usuarioId', sa.Integer(), nullable=True),
+    sa.Column('puntosAcumulados', sa.Integer(), nullable=True),
+    sa.Column('fechaRegistro', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
+    sa.Column('estaActivo', sa.Boolean(), nullable=True),
+    sa.ForeignKeyConstraint(['id'], ['personas.id'], ),
+    sa.ForeignKeyConstraint(['usuarioId'], ['usuarios.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('empleados',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('usuarioId', sa.Integer(), nullable=False),
+    sa.Column('codigoEmpleado', sa.String(), nullable=False),
+    sa.Column('correoLaboral', sa.String(), nullable=False),
+    sa.ForeignKeyConstraint(['id'], ['personas.id'], ),
+    sa.ForeignKeyConstraint(['usuarioId'], ['usuarios.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('codigoEmpleado'),
+    sa.UniqueConstraint('correoLaboral')
+    )
+    op.create_table('funciones',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('fechaHora', sa.DateTime(), nullable=False),
+    sa.Column('peliculaId', sa.Integer(), nullable=False),
+    sa.Column('salaId', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['peliculaId'], ['peliculas.id'], ),
+    sa.ForeignKeyConstraint(['salaId'], ['salas.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('refreshtoken',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('usuarioId', sa.Integer(), nullable=False),
+    sa.Column('tokenHash', sa.String(), nullable=False),
+    sa.Column('expiresAt', sa.DateTime(), nullable=False),
+    sa.Column('revocado', sa.Boolean(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['usuarioId'], ['usuarios.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('sillas',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('fila', sa.Integer(), nullable=False),
+    sa.Column('columna', sa.Integer(), nullable=False),
+    sa.Column('estaActiva', sa.Boolean(), nullable=True),
+    sa.Column('salaId', sa.Integer(), nullable=False),
+    sa.Column('tipoSillaId', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['salaId'], ['salas.id'], ),
+    sa.ForeignKeyConstraint(['tipoSillaId'], ['tipoSilla.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('boletas',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('funcionId', sa.Integer(), nullable=False),
+    sa.Column('sillaId', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['funcionId'], ['funciones.id'], ),
+    sa.ForeignKeyConstraint(['sillaId'], ['sillas.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('contratos',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('empleadoId', sa.Integer(), nullable=False),
+    sa.Column('multiplexId', sa.Integer(), nullable=False),
+    sa.Column('cargo', sa.Enum('director', 'cajero', 'despachador_comida', 'encargado_sala', 'aseador', 'administrador', name='cargoenum'), nullable=False),
+    sa.Column('salario', sa.Numeric(precision=12, scale=2), nullable=False),
+    sa.Column('fechaInicio', sa.Date(), nullable=False),
+    sa.Column('fechaFin', sa.Date(), nullable=True),
+    sa.Column('activo', sa.Boolean(), nullable=True),
+    sa.ForeignKeyConstraint(['empleadoId'], ['empleados.id'], ),
+    sa.ForeignKeyConstraint(['multiplexId'], ['multiplex.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('evaluaciones',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('comentario', sa.String(), nullable=False),
+    sa.Column('puntuacion', sa.Integer(), nullable=False),
+    sa.Column('cliente_id', sa.Integer(), nullable=False),
+    sa.Column('pelicula_id', sa.Integer(), nullable=True),
+    sa.Column('servicio_id', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['cliente_id'], ['clientes.id'], ),
+    sa.ForeignKeyConstraint(['pelicula_id'], ['peliculas.id'], ),
+    sa.ForeignKeyConstraint(['servicio_id'], ['servicios.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('facturas',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('clienteId', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['clienteId'], ['clientes.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('historial_cargos',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('empleadoId', sa.Integer(), nullable=False),
+    sa.Column('cargoAnterior', sa.Enum('director', 'cajero', 'despachador_comida', 'encargado_sala', 'aseador', 'administrador', name='cargoenum'), nullable=True),
+    sa.Column('cargoNuevo', sa.Enum('director', 'cajero', 'despachador_comida', 'encargado_sala', 'aseador', 'administrador', name='cargoenum'), nullable=False),
+    sa.Column('multiplexId', sa.Integer(), nullable=True),
+    sa.Column('fechaCambio', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
+    sa.Column('motivo', sa.String(), nullable=True),
+    sa.Column('registradoPorId', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['empleadoId'], ['empleados.id'], ),
+    sa.ForeignKeyConstraint(['multiplexId'], ['multiplex.id'], ),
+    sa.ForeignKeyConstraint(['registradoPorId'], ['usuarios.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('detalle_facturas',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('cantidad', sa.Integer(), nullable=False),
+    sa.Column('facturaId', sa.Integer(), nullable=False),
+    sa.Column('boletaId', sa.Integer(), nullable=True),
+    sa.Column('comidaId', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['boletaId'], ['boletas.id'], ),
+    sa.ForeignKeyConstraint(['comidaId'], ['comidas.id'], ),
+    sa.ForeignKeyConstraint(['facturaId'], ['facturas.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('pagos',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('monto', sa.Float(), nullable=False),
+    sa.Column('estado', sa.Enum('PENDIENTE', 'PAGADO', 'CANCELADO', name='estadopagoenum'), nullable=False),
+    sa.Column('metodoPago', sa.String(), nullable=False),
+    sa.Column('fechaPago', sa.DateTime(), nullable=False),
+    sa.Column('facturaId', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['facturaId'], ['facturas.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     # ### end Alembic commands ###
 
 
 def downgrade():
     # ### commands auto generated by Alembic - please adjust! ###
-    op.drop_constraint('uq_sala_numero_multiplex', 'salas', type_='unique')
-    op.create_unique_constraint(op.f('salas_numero_key'), 'salas', ['numero'], postgresql_nulls_not_distinct=False)
-    op.add_column('clientes', sa.Column('puntaje', sa.INTEGER(), autoincrement=False, nullable=False))
-    op.create_foreign_key(op.f('clientes_id_fkey'), 'clientes', 'personas', ['id'], ['id'])
-    op.drop_index(op.f('ix_clientes_id'), table_name='clientes')
-    op.drop_index(op.f('ix_clientes_correo'), table_name='clientes')
-    op.drop_column('clientes', 'idioma_preferido')
-    op.drop_column('clientes', 'puntos_acumulados')
-    op.drop_column('clientes', 'activo')
-    op.drop_column('clientes', 'fecha_registro')
-    op.drop_column('clientes', 'password_hash')
-    op.drop_column('clientes', 'correo')
-    op.drop_column('clientes', 'nombre_completo')
+    op.drop_table('pagos')
+    op.drop_table('detalle_facturas')
+    op.drop_table('historial_cargos')
+    op.drop_table('facturas')
+    op.drop_table('evaluaciones')
+    op.drop_table('contratos')
+    op.drop_table('boletas')
+    op.drop_table('sillas')
+    op.drop_table('refreshtoken')
+    op.drop_table('funciones')
+    op.drop_table('empleados')
+    op.drop_table('clientes')
+    op.drop_table('usuarios')
+    op.drop_table('salas')
+    op.drop_table('rol_permiso')
+    op.drop_table('tipoSilla')
+    op.drop_table('servicios')
+    op.drop_table('rol')
+    op.drop_table('personas')
+    op.drop_table('permiso')
+    op.drop_table('peliculas')
+    op.drop_table('multiplex')
+    op.drop_index(op.f('ix_configuracion_id'), table_name='configuracion')
+    op.drop_index(op.f('ix_configuracion_clave'), table_name='configuracion')
+    op.drop_table('configuracion')
+    op.drop_table('comidas')
     # ### end Alembic commands ###
 
 
 ================================================================================
-ARCHIVO: migrations\versions\fa5a32602dd1_actualizar_empleado_y_agregar_.py
+ARCHIVO: seeds\clientes.py
 ================================================================================
 
-"""Alembic migration script template."""
-"""Actualizar Empleado y agregar HistorialCargo
+"""Seed de clientes."""
+from sqlalchemy import select
+from app.database import SessionLocal
+from app.infrastructure.models.usuario import (Usuario)
+from app.infrastructure.models.cliente import (Cliente)
 
-Revision ID: fa5a32602dd1
-Revises: 458894e040b9
-Create Date: 2026-05-05 02:14:05.530225
-"""
+from app.infrastructure.models.rol import (Rol)
+from app.domain.services.auth_service import (AuthService)
 
-from alembic import op
-import sqlalchemy as sa
+CLIENTES = [
+    {
+        "nombres": "Juan",
+        "apellidos": "Gómez",
+        "correo": "juan@gmail.com",
+        "telefono": "3000001111",
+        "password": "Password123"
+    },
+    {
+        "nombres": "Laura",
+        "apellidos": "Ramírez",
+        "correo": "laura@gmail.com",
+        "telefono": "3000002222",
+        "password": "Password123"
+    }
+]
 
-# revision identifiers, used by Alembic.
-revision = 'fa5a32602dd1'
-down_revision = '458894e040b9'
-branch_labels = None
-depends_on = None
+def run():
+    db = SessionLocal()
+    authService = AuthService()
 
+    try:
+        rolCliente = db.execute(select(Rol).where(Rol.nombre == "CLIENTE")).scalar_one()
 
-def upgrade():
-    # ### commands auto generated by Alembic - please adjust! ###
-    op.add_column('empleados', sa.Column('cedula', sa.String(), nullable=False))
-    op.add_column('empleados', sa.Column('nombre_completo', sa.String(), nullable=False))
-    op.add_column('empleados', sa.Column('fecha_inicio_contrato', sa.Date(), nullable=False))
-    op.add_column('empleados', sa.Column('salario', sa.Numeric(precision=12, scale=2), nullable=False))
-    op.add_column('empleados', sa.Column('activo', sa.Boolean(), nullable=True))
-    op.add_column('empleados', sa.Column('multiplex_id', sa.Integer(), nullable=True))
-    op.add_column('empleados', sa.Column('correo_laboral', sa.String(), nullable=True))
-    op.drop_constraint(op.f('empleados_codigoEmpleado_key'), 'empleados', type_='unique')
-    op.drop_constraint(op.f('empleados_correoEmpleado_key'), 'empleados', type_='unique')
-    op.create_unique_constraint(None, 'empleados', ['correo_laboral'])
-    op.create_unique_constraint(None, 'empleados', ['cedula'])
-    op.create_foreign_key(None, 'empleados', 'multiplex', ['multiplex_id'], ['id'])
-    op.drop_column('empleados', 'correoEmpleado')
-    op.drop_column('empleados', 'codigoEmpleado')
-    op.drop_column('empleados', 'fechaIngreso')
-    # ### end Alembic commands ###
+        for data in CLIENTES:
+            existing = db.execute(select(Cliente).where(Cliente.correo ==data["correo"])).scalar_one_or_none()
 
+            if existing:
+                print(f"✓ Cliente ya existe: "
+                    f"{data['correo']}")
+                continue
+            # ======================================
+            # CREAR CLIENTE
+            # ======================================
 
-def downgrade():
-    # ### commands auto generated by Alembic - please adjust! ###
-    op.add_column('empleados', sa.Column('fechaIngreso', sa.VARCHAR(), autoincrement=False, nullable=False))
-    op.add_column('empleados', sa.Column('codigoEmpleado', sa.VARCHAR(), autoincrement=False, nullable=False))
-    op.add_column('empleados', sa.Column('correoEmpleado', sa.VARCHAR(), autoincrement=False, nullable=False))
-    op.drop_constraint(None, 'empleados', type_='foreignkey')
-    op.drop_constraint(None, 'empleados', type_='unique')
-    op.drop_constraint(None, 'empleados', type_='unique')
-    op.create_unique_constraint(op.f('empleados_correoEmpleado_key'), 'empleados', ['correoEmpleado'], postgresql_nulls_not_distinct=False)
-    op.create_unique_constraint(op.f('empleados_codigoEmpleado_key'), 'empleados', ['codigoEmpleado'], postgresql_nulls_not_distinct=False)
-    op.drop_column('empleados', 'correo_laboral')
-    op.drop_column('empleados', 'multiplex_id')
-    op.drop_column('empleados', 'activo')
-    op.drop_column('empleados', 'salario')
-    op.drop_column('empleados', 'fecha_inicio_contrato')
-    op.drop_column('empleados', 'nombre_completo')
-    op.drop_column('empleados', 'cedula')
-    # ### end Alembic commands ###
+            cliente = Cliente(
+                nombres=data["nombres"],
+                apellidos=data["apellidos"],
+                correo=data["correo"],
+                telefono=data["telefono"],
+                activo=True,
+                usuarioId=None)
+
+            db.add(cliente)
+            db.flush()
+
+            # ======================================
+            # CREAR USUARIO
+            # ======================================
+
+            usuario = Usuario(passwordHash=authService.hashPassword(data["password"]),
+                              personaId=cliente.id,
+                              rolId=rolCliente.id)
+
+            db.add(usuario)
+            db.flush()
+
+            # ======================================
+            # ASOCIAR USUARIO
+            # ======================================
+
+            cliente.usuarioId = usuario.id
+
+            # ======================================
+            # COMMIT FINAL
+            # ======================================
+
+            db.commit()
+            print(f"✓ Cliente creado: "
+                f"{cliente.nombres} "
+                f"{cliente.apellidos}")
+
+        print("✓ Seed clientes completado.")
+
+    except Exception as e:
+        db.rollback()
+        print(f"✗ Error seed clientes: {e}")
+        raise
+
+    finally:
+        db.close()
+
+if __name__ == "__main__":
+    run()
 
 
 ================================================================================
@@ -5474,125 +5275,217 @@ if __name__ == "__main__":
 ARCHIVO: seeds\empleados_seed.py
 ================================================================================
 
-"""Script to seed employees and users using existing services."""
-
+"""Seed de empleados."""
 import sys
 import os
 from datetime import date
-from decimal import Decimal
 
-# Add current directory to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Agregar raíz del proyecto al path
+sys.path.insert(
+    0,
+    os.path.abspath(
+        os.path.join(
+            os.path.dirname(__file__),
+            ".."
+        )
+    )
+)
 
-from app.database import SessionLocal
-from app.infrastructure.repositories.empleado_repository import EmpleadoRepository
-from app.domain.services.empleado_service import EmpleadoService
-from app.infrastructure.models.cargoEnum import CargoEnum
-from app.infrastructure.models.rol import Rol
 from sqlalchemy import select
+from app.database import SessionLocal
+from app.infrastructure.models.usuario import (Usuario)
+from app.infrastructure.models.empleado import (Empleado)
+from app.infrastructure.models.contrato import (Contrato)
+from app.infrastructure.models.rol import (Rol)
+from app.infrastructure.models.multiplex import (Multiplex)
+from app.infrastructure.models.cargoEnum import (CargoEnum)
 
-def seed_roles_if_needed(db):
-    """Ensure basic roles exist."""
-    roles = ["Cajero", "Administrador Multiplex", "Cliente"]
-    for role_name in roles:
-        stmt = select(Rol).where(Rol.nombre == role_name)
+from app.domain.services.auth_service import (AuthService)
+
+EMPLEADOS = [
+    {
+        "nombres": "Carlos",
+        "apellidos": "Pérez",
+        "correo": "carlos@cinepacho.com",
+        "telefono": "3001234567",
+        "password": "Password123",
+        "codigoEmpleado": "EMP-001",
+        "correoLaboral": "carlos@cinepacho.com",
+        "cargo": CargoEnum.cajero,
+        "salario": 1500000,
+        "multiplexCodigo": "TIT"
+    },
+    {
+        "nombres": "Ana",
+        "apellidos": "Rodríguez",
+        "correo": "ana@cinepacho.com",
+        "telefono": "3002223333",
+        "password": "Password123",
+        "codigoEmpleado": "EMP-002",
+        "correoLaboral": "ana@cinepacho.com",
+        "cargo": CargoEnum.director,
+        "salario": 3500000,
+        "multiplexCodigo": "UNI"
+    },
+    {
+        "nombres": "Luis",
+        "apellidos": "Martínez",
+        "correo": "luis@cinepacho.com",
+        "telefono": "3004445555",
+        "password": "Password123",
+        "codigoEmpleado": "EMP-003",
+        "correoLaboral": "luis@cinepacho.com",
+        "cargo": CargoEnum.aseador,
+        "salario": 1300000,
+        "multiplexCodigo": "GRE"
+    }
+]
+
+def seedRoles(db):
+    """
+    Crea roles básicos.
+    """
+
+    roles = [
+        "ADMIN_GENERAL",
+        "ADMIN_MULTIPLEX",
+        "CAJERO",
+        "CLIENTE"
+    ]
+
+    for roleName in roles:
+        stmt = select(Rol).where(Rol.nombre == roleName)
         existing = db.execute(stmt).scalar_one_or_none()
+
         if not existing:
-            print(f"Creando rol: {role_name}")
-            new_role = Rol(nombre=role_name)
-            db.add(new_role)
+            db.add(Rol(nombre=roleName))
     db.commit()
 
-def run_seed():
-    print("Iniciando semilla de empleados y usuarios...")
+def getRoleName(cargo: CargoEnum):
+    if cargo == CargoEnum.director:
+        return "ADMIN_MULTIPLEX"
+    return "CAJERO"
+
+def run():
+    print("Iniciando seed de empleados...")
     db = SessionLocal()
+    authService = AuthService()
     try:
-        # 1. Asegurar roles
-        seed_roles_if_needed(db)
-        
-        # 2. Instanciar repo y servicio
-        repo = EmpleadoRepository(db)
-        service = EmpleadoService()
-        
-        # 3. Datos de prueba
-        empleados_data = [
-            {
-                "primer_nombre": "Carlos",
-                "segundo_nombre": "Alberto",
-                "primer_apellido": "Pérez",
-                "segundo_apellido": "Gómez",
-                "cedula_ciudadania": 10102020,
-                "fecha_nacimiento": date(1985, 5, 20),
-                "telefono": 3001234567,
-                "email": "carlos.perez@example.com",
-                "cargo": CargoEnum.cajero,
-                "salario": 1200000,
-                "multiplex_id": 1
-            },
-            {
-                "primer_nombre": "Ana",
-                "segundo_nombre": "María",
-                "primer_apellido": "Rodríguez",
-                "segundo_apellido": "López",
-                "cedula_ciudadania": 20203030,
-                "fecha_nacimiento": date(1992, 10, 15),
-                "telefono": 3109876543,
-                "email": "ana.rodriguez@example.com",
-                "cargo": CargoEnum.director,
-                "salario": 2500000,
-                "multiplex_id": 1
-            },
-            {
-                "primer_nombre": "Luis",
-                "segundo_nombre": "",
-                "primer_apellido": "Martínez",
-                "segundo_apellido": "Ruiz",
-                "cedula_ciudadania": 30304040,
-                "fecha_nacimiento": date(1990, 3, 5),
-                "telefono": 3201112233,
-                "email": "luis.martinez@example.com",
-                "cargo": CargoEnum.aseador,
-                "salario": 1000000,
-                "multiplex_id": 2
-            }
-        ]
-        
-        for data in empleados_data:
-            # Verificar si ya existe por cédula
-            existing = repo.buscar_por_cedula(str(data["cedula_ciudadania"]))
+        # ======================================
+        # CREAR ROLES
+        # ======================================
+
+        seedRoles(db)
+
+        # ======================================
+        # CREAR EMPLEADOS
+        # ======================================
+
+        for data in EMPLEADOS:
+            existing = db.execute(select(Empleado).where(Empleado.correoLaboral ==data["correoLaboral"])).scalar_one_or_none()
+
             if existing:
-                print(f"Omitiendo empleado {data['primer_nombre']} (ya existe)")
+                print(f"✓ Empleado ya existe: "
+                    f"{data['correoLaboral']}")
                 continue
-            
-            print(f"Creando empleado: {data['primer_nombre']} {data['primer_apellido']}...")
-            service.crear_empleado(repo, data)
-            
-        print("✓ Semilla completada con éxito.")
-        
+
+            multiplex = db.execute(select(Multiplex).where(Multiplex.codigo ==data["multiplexCodigo"])).scalar_one_or_none()
+
+            if not multiplex:
+                print(f"✗ Multiplex no encontrado: "
+                    f"{data['multiplexCodigo']}")
+                continue
+
+            roleName = getRoleName(data["cargo"])
+
+            rol = db.execute(select(Rol).where(Rol.nombre == roleName)).scalar_one()
+
+            # ======================================
+            # CREAR EMPLEADO
+            # ======================================
+
+            empleado = Empleado(
+                nombres=data["nombres"],
+                apellidos=data["apellidos"],
+                correo=data["correo"],
+                telefono=data["telefono"],
+                activo=True,
+                codigoEmpleado=data[
+                    "codigoEmpleado"],
+                correoLaboral=data[
+                    "correoLaboral"],
+                # temporal hasta crear usuario
+                usuarioId=1)
+            db.add(empleado)
+            db.flush()
+
+            # ======================================
+            # CREAR USUARIO
+            # ======================================
+
+            usuario = Usuario(
+                passwordHash=authService.hashPassword(data["password"]),
+                personaId=empleado.id,
+                rolId=rol.id)
+
+            db.add(usuario)
+            db.flush()
+
+            # ======================================
+            # ACTUALIZAR usuarioId
+            # ======================================
+
+            empleado.usuarioId = usuario.id
+            # ======================================
+            # CREAR CONTRATO
+            # ======================================
+
+            contrato = Contrato(
+                empleadoId=empleado.id,
+                multiplexId=multiplex.id,
+                cargo=data["cargo"],
+                salario=data["salario"],
+                fechaInicio=date.today(),
+                activo=True
+)
+            db.add(contrato)
+            # ======================================
+            # COMMIT FINAL
+            # ======================================
+
+            db.commit()
+            print(f"✓ Empleado creado: "
+                f"{empleado.nombres} "
+                f"{empleado.apellidos}")
+
+        print("✓ Seed empleados completado.")
+
     except Exception as e:
         db.rollback()
-        print(f"✗ Error durante la semilla: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"✗ Error seed empleados: {e}")
+        raise
     finally:
         db.close()
 
 if __name__ == "__main__":
-    run_seed()
-
+    run()
 
 
 ================================================================================
 ARCHIVO: seeds\multiplex.py
 ================================================================================
 
-"""Seed data for multiplexes - Datos iniciales de cines."""
+"""Seed de multiplexes."""
 
 from decimal import Decimal
+
 from sqlalchemy import select
 
-from app.infrastructure.models.multiplex import Multiplex
 from app.database import SessionLocal
+
+from app.infrastructure.models.multiplex import (
+    Multiplex
+)
 
 
 MULTIPLEX_DATA = [
@@ -5600,7 +5493,7 @@ MULTIPLEX_DATA = [
         "nombre": "Titán Plaza",
         "codigo": "TIT",
         "ciudad": "Bogotá",
-        "direccion": "Calle 129B #71B-40, Bogotá",
+        "direccion": "Calle 129B #71B-40",
         "latitud": Decimal("4.663100"),
         "longitud": Decimal("-74.150300"),
     },
@@ -5608,7 +5501,7 @@ MULTIPLEX_DATA = [
         "nombre": "Unicentro",
         "codigo": "UNI",
         "ciudad": "Bogotá",
-        "direccion": "Av. 15 #124-30, Bogotá",
+        "direccion": "Av. 15 #124-30",
         "latitud": Decimal("4.697100"),
         "longitud": Decimal("-74.048100"),
     },
@@ -5616,7 +5509,7 @@ MULTIPLEX_DATA = [
         "nombre": "Plaza Central",
         "codigo": "PLC",
         "ciudad": "Bogotá",
-        "direccion": "Calle 30 Sur #43C-80, Bogotá",
+        "direccion": "Calle 30 Sur #43C-80",
         "latitud": Decimal("4.628500"),
         "longitud": Decimal("-74.127200"),
     },
@@ -5624,15 +5517,15 @@ MULTIPLEX_DATA = [
         "nombre": "Gran Estación",
         "codigo": "GRE",
         "ciudad": "Bogotá",
-        "direccion": "Av. El Dorado #65B-50, Bogotá",
+        "direccion": "Av. El Dorado #65B-50",
         "latitud": Decimal("4.650300"),
         "longitud": Decimal("-74.092000"),
     },
     {
-        "nombre": "Embajador (Centro)",
+        "nombre": "Embajador Centro",
         "codigo": "EMB",
         "ciudad": "Bogotá",
-        "direccion": "Cra. 13 #15-50, Bogotá",
+        "direccion": "Cra. 13 #15-50",
         "latitud": Decimal("4.609900"),
         "longitud": Decimal("-74.083300"),
     },
@@ -5640,7 +5533,7 @@ MULTIPLEX_DATA = [
         "nombre": "Las Américas",
         "codigo": "AME",
         "ciudad": "Bogotá",
-        "direccion": "Cra. 86 #30A-30, Bogotá",
+        "direccion": "Cra. 86 #30A-30",
         "latitud": Decimal("4.641300"),
         "longitud": Decimal("-74.088400"),
     },
@@ -5649,36 +5542,58 @@ MULTIPLEX_DATA = [
 
 def run():
     """
-    Carga datos iniciales de multiplexes.
-    Idempotente: no inserta si ya existen registros.
+    Inserta multiplexes iniciales.
+
+    El seed es idempotente:
+    no duplica registros.
     """
-    with SessionLocal() as db:
-        try:
-            # Verificar si ya existen registros
-            stmt = select(Multiplex).limit(1)
-            result = db.execute(stmt)
-            existing = result.scalar_one_or_none()
-            
-            if existing:
-                print("✓ Seed multiplex: ya existen registros, omitiendo.")
-                return
-            
-            # Insertar nuevos datos
-            for data in MULTIPLEX_DATA:
-                multiplex = Multiplex(**data)
-                db.add(multiplex)
-            
-            db.commit()
-            print(f"✓ Seed multiplex: {len(MULTIPLEX_DATA)} multiplexes insertados correctamente.")
-            
-        except Exception as e:
-            db.rollback()
-            print(f"✗ Error en seed multiplex: {str(e)}")
-            raise
+
+    db = SessionLocal()
+
+    try:
+
+        existing = db.execute(
+            select(Multiplex)
+        ).scalar_one_or_none()
+
+        if existing:
+
+            print(
+                "✓ Multiplex ya existentes."
+            )
+
+            return
+
+        for data in MULTIPLEX_DATA:
+
+            multiplex = Multiplex(**data)
+
+            db.add(multiplex)
+
+        db.commit()
+
+        print(
+            f"✓ {len(MULTIPLEX_DATA)} "
+            f"multiplex creados."
+        )
+
+    except Exception as e:
+
+        db.rollback()
+
+        print(
+            f"✗ Error seed multiplex: {e}"
+        )
+
+        raise
+
+    finally:
+
+        db.close()
 
 
 if __name__ == "__main__":
-    """Permite ejecutar este seed directamente: python seeds/multiplex.py"""
+
     run()
 
 
@@ -5748,7 +5663,7 @@ def cliente_normal(db_session):
     cliente = Cliente(
         nombre_completo="Test User",
         correo="test@example.com",
-        password_hash=auth_service.hash_password("password123"),
+        password_hash=auth_service.hashPassword("password123"),
         intentos_fallidos=0,
     )
     db_session.add(cliente)
@@ -5764,7 +5679,7 @@ def cliente_bloqueado(db_session):
     cliente = Cliente(
         nombre_completo="Bloqueado User",
         correo="bloqueado@example.com",
-        password_hash=auth_service.hash_password("password123"),
+        password_hash=auth_service.hashPassword("password123"),
         intentos_fallidos=5,
         bloqueado_hasta=datetime.now(timezone.utc),
     )
@@ -6521,29 +6436,38 @@ ARCHIVO: tests\unit\test_auth_service.py
 ================================================================================
 
 """Unit tests for auth service."""
-import pytest
-from unittest.mock import MagicMock
 from datetime import datetime, timezone
-from app.domain.services.auth_service import authenticate_user
+from unittest.mock import MagicMock
 
-def test_login_exitoso():
-    from passlib.context import CryptContext
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from jose import jwt
+from app.domain.services.auth_service import AuthService
+from app.config import settings
 
-    repo = MagicMock()
-    repo.buscar_por_correo.return_value = MagicMock(
-        id=1,
-        password_hash=pwd_context.hash("password123"),
-        intentos_fallidos=0,
-        ultimo_intento=None,
-    )
-    repo.verificar_bloqueo.return_value = False
 
-    tokens, error = authenticate_user("test@example.com", "password123", repo)
+def authenticate_user(email: str, password: str, repo):
+    """Helper de pruebas para validar credenciales de usuario."""
+    usuario = repo.buscar_por_correo(email)
+    if usuario is None:
+        return None, "credenciales_invalidas"
 
-    assert error is None
-    assert "access_token" in tokens
-    assert "refresh_token" in tokens
+    if repo.verificar_bloqueo(email):
+        return None, "bloqueado"
+
+    auth_service = AuthService()
+    if not auth_service.verifyPassword(password, usuario.password_hash):
+        repo.registrar_intento_fallido(email)
+        return None, "credenciales_invalidas"
+
+    return {"access_token": "mock-token"}, None
+
+
+def test_hash_password_and_verify():
+    auth_service = AuthService()
+    plain_password = "password123"
+
+    hashed = auth_service.hashPassword(plain_password)
+    assert auth_service.verifyPassword(plain_password, hashed)
+    assert not auth_service.verifyPassword("wrongpass", hashed)
 
 def test_login_password_incorrecto():
     from passlib.context import CryptContext

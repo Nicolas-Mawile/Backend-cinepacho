@@ -6,20 +6,21 @@ from typing import List, Optional
 from app.infrastructure.models.cargoEnum import CargoEnum
 
 class EmpleadoBase(BaseModel):
-    primer_nombre: str
-    segundo_nombre: Optional[str] = None
-    primer_apellido: str
-    segundo_apellido: Optional[str] = None
-    cedula_ciudadania: str
-    fecha_nacimiento: date
+    id: int
+    nombres: str
+    apellidos: str
+    correo: EmailStr
     telefono: str
-    email: EmailStr
+
+class EmpleadoCrearRequest(BaseModel):
+    nombres: str
+    apellidos: str
+    correo: EmailStr
+    telefono: str
+    password: str = Field(..., min_length=8)
     cargo: CargoEnum
     salario: float
-    multiplex_id: int
-
-class EmpleadoCreate(EmpleadoBase):
-    pass
+    multiplexId: int
 
 class EmpleadoUpdate(BaseModel):
     cargo: Optional[CargoEnum] = None
@@ -28,32 +29,31 @@ class EmpleadoUpdate(BaseModel):
 
 class EmpleadoResponse(BaseModel):
     id: int
-    nombre: str
-    email: str
-    cargo: CargoEnum
-    multiplex_id: Optional[int]
-    estado: str
-    created_at: datetime
+    nombres: str
+    apellidos: str
+    correo: EmailStr
+    telefono: str
+    correoLaboral: EmailStr
+    cargoActual: Optional[CargoEnum]
 
     model_config = {
         "from_attributes": True
     }
 
 class EmpleadoDetalle(BaseModel):
+    """
+    Response detallado de empleado.
+    """
     id: int
-    primer_nombre: str
-    segundo_nombre: Optional[str]
-    primer_apellido: str
-    segundo_apellido: Optional[str]
-    cedula_ciudadania: str
-    fecha_nacimiento: date
-    telefono: str
-    email: str
-    cargo: CargoEnum
-    salario: float
-    multiplex_id: Optional[int]
-    correo_laboral: Optional[str]
-    estado: str
+    nombres: str
+    apellidos: str
+    correo: EmailStr
+    telefono: Optional[str]
+    codigoEmpleado: str
+    correoLaboral: EmailStr
+    cargoActual: Optional[CargoEnum]
+    multiplexActual: Optional[str]
+    salarioActual: Optional[float]
     created_at: datetime
 
     model_config = {
@@ -62,11 +62,11 @@ class EmpleadoDetalle(BaseModel):
 
 class EmpleadoListElement(BaseModel):
     id: int
-    primer_nombre: str
-    primer_apellido: str
-    cargo: CargoEnum
-    multiplex_id: Optional[int]
-
+    nombres: str
+    apellidos: str
+    codigoEmpleado: str
+    cargoActual: Optional[CargoEnum]
+    multiplexActual: Optional[str]
     model_config = {
         "from_attributes": True
     }

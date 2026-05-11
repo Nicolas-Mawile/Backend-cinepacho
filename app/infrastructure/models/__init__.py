@@ -16,6 +16,7 @@ from .pago import Pago
 from .pelicula import Pelicula
 from .permiso import Permiso
 from .persona import Persona
+from .refrescar_token import RefreshToken
 from .rol_permiso import rol_permiso
 from .rol import Rol
 from .sala import Sala
