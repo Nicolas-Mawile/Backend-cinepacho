@@ -15,7 +15,7 @@ def get_repository(db: Session = Depends(get_db)):
     return EmpleadoRepository(db)
 
 @router.post("/", response_model=EmpleadoDetalle, status_code=201)
-def crear_empleado(datos: EmpleadoCrearRequest, repo: EmpleadoRepository = Depends(get_repository), _: Usuario = Depends(requirePermission)):
+def crear_empleado(datos: EmpleadoCrearRequest, repo: EmpleadoRepository = Depends(get_repository), _: Usuario = Depends(requirePermission("crear-empleado"))):
 
     service = EmpleadoService(repo.db)
     try:
@@ -27,13 +27,28 @@ def crear_empleado(datos: EmpleadoCrearRequest, repo: EmpleadoRepository = Depen
 
 @router.get("/",response_model=list[EmpleadoListElement])
 def listar_empleados(pagina: int = Query(1, ge=1), limite: int = Query(10, ge=1, le=100), repo: EmpleadoRepository = Depends(get_repository), 
-                     _: Usuario = Depends(requirePermission)):
+                     _: Usuario = Depends(requirePermission("ver-listado-empleados"))):
 
     empleados = repo.listar(pagina=pagina, limite=limite)
-    return empleados
+    response = []
+
+    for empleado in empleados:
+        response.append({
+            "id": empleado.id,
+            "nombres": empleado.nombres,
+            "apellidos": empleado.apellidos,
+            "cargoActual": empleado.cargoActual,
+            "multiplexActual": (
+                empleado.multiplexActual.nombre
+                if empleado.multiplexActual
+                else None
+            )
+        })
+
+    return response
 
 @router.get("/{id}",response_model=EmpleadoDetalle)
-def obtener_empleado(id: int, repo: EmpleadoRepository = Depends(get_repository), _: Usuario = Depends(requirePermission)):
+def obtener_empleado(id: int, repo: EmpleadoRepository = Depends(get_repository), _: Usuario = Depends(requirePermission("ver-detalle-empleado"))):
 
     empleado = repo.buscar_por_id(id)
     if not empleado:
@@ -41,7 +56,7 @@ def obtener_empleado(id: int, repo: EmpleadoRepository = Depends(get_repository)
     return empleado
 
 @router.patch("/{id}/deshabilitar")
-def deshabilitar_empleado(id: int, repo: EmpleadoRepository = Depends(get_repository),_: Usuario = Depends(requirePermission)):
+def deshabilitar_empleado(id: int, repo: EmpleadoRepository = Depends(get_repository),_: Usuario = Depends(requirePermission("deshabilitar-empleado"))):
 
     empleado = repo.buscar_por_id(id)
     if not empleado:

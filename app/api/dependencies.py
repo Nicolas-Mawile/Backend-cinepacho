@@ -13,8 +13,7 @@ from app.domain.roles import get_permisos
 from app.infrastructure.models.usuario import Usuario
 from app.infrastructure.models.rol import Rol
 
-oauth2Scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-
+oauth2Scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 def get_current_user(token: str = Depends(oauth2Scheme), db: Session = Depends(get_db)):
     """Decodifica el JWT y devuelve el usuario autenticado."""

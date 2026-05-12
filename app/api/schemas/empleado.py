@@ -64,9 +64,8 @@ class EmpleadoListElement(BaseModel):
     id: int
     nombres: str
     apellidos: str
-    codigoEmpleado: str
     cargoActual: Optional[CargoEnum]
-    multiplexActual: Optional[str]
+    multiplexActual: str | None = None
     model_config = {
         "from_attributes": True
     }
