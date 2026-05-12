@@ -723,11 +723,7 @@ def get_current_user(token: str = Depends(oauth2Scheme), db: Session = Depends(g
     invalidTokenException = HTTPException(status_code=401, detail="Token inválido")
 
     try:
-        payload = jwt.decode(
-            token,
-            settings.secret_key,
-            algorithms=[settings.algorithm]
-        )
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
         userId = payload.get("sub")
         if userId is None:
             raise invalidTokenException
@@ -740,6 +736,43 @@ def get_current_user(token: str = Depends(oauth2Scheme), db: Session = Depends(g
 
     return usuario
 
+def requireRole(roles: List[str]):
+    """Restringe acceso por rol."""
+    def validator(user: Usuario = Depends(get_current_user)):
+        if user.rol is None:
+            raise HTTPException(status_code=403, detail="Usuario sin rol asignado")
+
+        if user.rol.nombre not in roles:
+            raise HTTPException(status_code=403, detail="No autorizado")
+
+        return user
+    return validator
+
+def requirePermission(permission: str):
+    """Restringe acceso por permisos."""
+
+    def validator(user: Usuario = Depends(get_current_user)):
+
+        if user.rol is None:
+            raise HTTPException(status_code=403, detail="Usuario sin rol")
+        permisos = [permiso.nombre for permiso in user.rol.permisos]
+
+        if permission not in permisos:
+            raise HTTPException(status_code=403, detail="Permiso insuficiente")
+        return user
+    return validator
+
+def validateMultiplexAccess(user: Usuario, multiplexId: int):
+    """Valida acceso por multiplex."""
+    if user.rol.nombre == "ADMIN-GENERAL":
+        return
+
+    empleado = user.empleado
+    if empleado is None:
+        raise HTTPException(status_code=403, detail="Usuario no asociado a empleado")
+
+    if empleado.multiplexId != multiplexId:
+        raise HTTPException(status_code=403, detail="No autorizado para este multiplex")
 
 async def get_current_cliente(user=Depends(get_current_user)):
     if not isinstance(user, Cliente):
@@ -763,13 +796,6 @@ async def get_current_admin_general(user=Depends(get_current_user)):
     if not isinstance(user, Empleado) or user.rol != "ADMIN-GENERAL":
         raise HTTPException(status_code=403, detail="Se requiere rol ADMIN-GENERAL")
     return user
-
-
-def require_rol(role: str):
-    """Placeholder para requerir un rol específico en un endpoint."""
-    def check_rol(current_user=Depends(get_current_user)):
-        return current_user
-    return check_rol
 
 
 def require_role(rolesPermitidos: List[str]):
@@ -848,8 +874,8 @@ from app.infrastructure.models.rol import Rol
 from app.infrastructure.repositories.usuarioRepository import UsuarioRepository
 from app.domain.services.auth_service import AuthService
 from app.api.dependencies import get_current_user
-from cinepachobackend.app.infrastructure.models.cliente import Cliente
-from cinepachobackend.app.infrastructure.repositories.cliente_repository import ClienteRepository
+from app.infrastructure.models.cliente import Cliente
+from app.infrastructure.repositories.cliente_repository import ClienteRepository
 
 router = APIRouter(
     prefix="/auth",
@@ -858,14 +884,15 @@ router = APIRouter(
 
 def _buildUsuarioResponse(usuario: Usuario) -> dict:
     """Construye la respuesta JSON para un usuario autenticado."""
+    permisos = [permiso.nombre for permiso in usuario.rol.permisos]
     return {
         "id": usuario.id,
-        "nombre": usuario.persona.nombre,
-        "apellido": usuario.persona.apellido,
-        "email": usuario.persona.email,
-        "rol": usuario.rol.nombre
+        "nombres": usuario.persona.nombres,
+        "apellidos": usuario.persona.apellidos,
+        "correo": usuario.persona.correo,
+        "rol": usuario.rol.nombre,
+        "permisos": permisos
     }
-
 
 @router.post("/registro")
 def registro(datos: RegistroRequest, db: Session = Depends(get_db)):
@@ -879,9 +906,9 @@ def registro(datos: RegistroRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=409, detail="Correo ya registrado")
 
     persona = Persona(
-        nombre=datos.nombre,
-        apellido=datos.apellido,
-        email=datos.correo,
+        nombres=datos.nombres,
+        apellidos=datos.apellidos,
+        correo=datos.correo,
         telefono=datos.telefono,)
 
     db.add(persona)
@@ -893,9 +920,9 @@ def registro(datos: RegistroRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Rol CLIENTE no existe")
 
     usuario = Usuario(
-        password=authService.hashPassword(datos.password),
-        persona_id=persona.id,
-        rol_id=rolCliente.id)
+        passwordHash=authService.hashPassword(datos.password),
+        personaId=persona.id,
+        rolId=rolCliente.id)
 
     db.add(usuario)
     db.commit()
@@ -905,10 +932,11 @@ def registro(datos: RegistroRequest, db: Session = Depends(get_db)):
     db.add(cliente)
     db.commit()
 
-    token = authService.createAccessToken(data={"sub": str(usuario.id), "role": rolCliente.nombre})
-
+    token = authService.createAccessToken(data={"sub": str(usuario.id), "role": usuario.rol.nombre})
+    refreshToken = (authService.createRefreshToken(data={"sub": str(usuario.id)}))
     return {"access_token": token,
             "token_type": "bearer",
+            "refresh_token": refreshToken,
             "usuario": _buildUsuarioResponse(usuario)}
 
 
@@ -918,7 +946,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     usuarioRepo = UsuarioRepository(db)
     authService = AuthService()
 
-    usuario = usuarioRepo.buscarPorCorreo(data.email)
+    usuario = usuarioRepo.buscarPorCorreo(data.correo)
     if not usuario:
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
     
@@ -928,24 +956,30 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     if usuario.bloqueadoHasta and usuario.bloqueadoHasta > datetime.now(datetime.timezone.utc):
         raise HTTPException(status_code=403, detail="Usuario bloqueado temporalmente")
 
-    validPassword = authService.verifyPassword(data.password, usuario.password)
+    validPassword = authService.verifyPassword(data.password, usuario.passwordHash)
     if not validPassword:
         usuario.inetentosFallidos += 1
+
+        if usuario.inetentosFallidos >= 5:
+            from datetime import timedelta
+            usuario.bloqueadoHasta = datetime.now(datetime.timezone.utc) + timedelta(minutes=15)
+        
         db.commit()
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
     
     usuario.inetentosFallidos = 0
+    usuario.bloqueadoHasta = None
+    db.commit()
 
-    accessToken = authService.createAccessToken(
-        data={"sub": str(usuario.id), "role": usuario.rol.nombre}
-    )
-
+    accessToken = authService.createAccessToken(data={"sub": str(usuario.id), "role": usuario.rol.nombre})
+    refreshToken = authService.createRefreshToken(data={"sub": str(usuario.id)})
+    
     return {
         "access_token": accessToken,
         "token_type": "bearer",
+        "refresh_token": refreshToken,
         "usuario": _buildUsuarioResponse(usuario)
     }
-
 
 @router.get("/me")
 def me(user=Depends(get_current_user)):
@@ -953,9 +987,9 @@ def me(user=Depends(get_current_user)):
     permisos = [permiso.nombre for permiso in user.rol.permisos]
     return {
         "id": user.id,
-        "nombre": user.persona.nombre,
-        "apellido": user.persona.apellido,
-        "email": user.persona.email,
+        "nombres": user.persona.nombres,
+        "apellidos": user.persona.apellidos,
+        "correo": user.persona.correo,
         "rol": user.rol.nombre,
         "permisos": permisos
     }
@@ -1363,8 +1397,8 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class RegistroRequest(BaseModel):
-    nombre: str = Field(..., min_length=2, max_length=150)
-    apellido: str = Field(..., min_length=2, max_length=150)
+    nombres: str = Field(..., min_length=2, max_length=150)
+    apellidos: str = Field(..., min_length=2, max_length=150)
     correo: EmailStr
     telefono: str | None
     password: str = Field(..., min_length=8)
@@ -2012,6 +2046,36 @@ ARCHIVO: app\domain\__init__.py
 
 
 ================================================================================
+ARCHIVO: app\domain\constants\roles.py
+================================================================================
+
+from enum import Enum
+
+class RoleEnum(str, Enum):
+    CLIENTE = "CLIENTE"
+    EMPLEADO_CAJERO = "EMPLEADO-CAJERO"
+    EMPLEADO_OTRO = "EMPLEADO-OTRO"
+    ADMIN_MULTIPLEX = "ADMIN-MULTIPLEX"
+    ADMIN_GENERAL = "ADMIN-GENERAL"
+
+
+================================================================================
+ARCHIVO: app\domain\enums\cargoEnum.py
+================================================================================
+
+from enum import Enum
+
+class CargoEnum(Enum):
+    director = "director"
+    cajero = "cajero"
+    despachador_comida = "despachador_comida"
+    encargadoSala = "encargado sala"
+    aseador = "aseador"
+    administrador = "administrador"
+
+
+
+================================================================================
 ARCHIVO: app\domain\events\bus.py
 ================================================================================
 
@@ -2089,18 +2153,18 @@ from jose import jwt
 from passlib.context import CryptContext
 from app.config import settings
 
-pwdContext = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 class AuthService:
     """Encapsula la lógica de autenticación y creación de tokens."""
+    def __init__(self):
+        self.pwdContext = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
     def hashPassword(self, password: str) -> str:
         """Genera un hash seguro para una contraseña simple."""
-        return pwdContext.hash(password)
+        return self.pwdContext.hash(password)
 
     def verifyPassword(self, plainPassword: str, hashedPassword: str) -> bool:
         """Verifica si la contraseña sin hash coincide con el hash guardado."""
-        return pwdContext.verify(plainPassword, hashedPassword)
+        return self.pwdContext.verify(plainPassword, hashedPassword)
 
     def createAccessToken(self, data: dict) -> str:
         """Genera un JWT de acceso con expiración establecida."""
@@ -2108,11 +2172,21 @@ class AuthService:
         expiration = datetime.now(timezone.utc) + timedelta(hours=24)
         payload.update({"exp": expiration})
 
-        return jwt.encode(
-            payload,
-            settings.secret_key,
-            algorithm=settings.algorithm
+        return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
+    
+    def createRefreshToken(self, data: dict) -> str:
+
+        toEncode = data.copy()
+        expire = datetime.now(timezone.utc) + timedelta(days=7)
+
+        toEncode.update(
+            {
+                "exp": expire,
+                "type": "refresh"
+            }
         )
+        encodedJwt = jwt.encode(toEncode, settings.secret_key, algorithm=settings.algorithm)
+        return encodedJwt
 
 
 ================================================================================
@@ -2179,8 +2253,10 @@ from app.infrastructure.models.usuario import Usuario
 from app.infrastructure.models.rol import Rol
 from app.infrastructure.models.contrato import Contrato
 from app.infrastructure.models.cargoEnum import CargoEnum
+from app.domain.constants.roles import RoleEnum
 from app.infrastructure.repositories.empleado_repository import (EmpleadoRepository)
 from app.domain.services.auth_service import AuthService
+
 
 class EmpleadoService:
     def __init__(self, db: Session):
@@ -2297,6 +2373,29 @@ class EmpleadoService:
         self.db.commit()
         self.db.refresh(empleado)
         return empleado
+    
+    def obtenerRolSegunCargo(self, cargo: CargoEnum) -> Rol:
+        if cargo == CargoEnum.cajero:
+            roleName = RoleEnum.EMPLEADO_CAJERO.value
+
+        elif cargo in [CargoEnum.aseador, CargoEnum.despachador]:
+            roleName = RoleEnum.EMPLEADO_OTRO.value
+
+        elif cargo == CargoEnum.administrador:
+            roleName = RoleEnum.ADMIN_MULTIPLEX.value
+
+        elif cargo == CargoEnum.director:
+            roleName = RoleEnum.ADMIN_GENERAL.value
+
+        else:
+            raise ValueError("Cargo inválido")
+
+        stmt = select(Rol).where(Rol.nombre == roleName)
+        rol = (self.db.execute(stmt).scalar_one_or_none())
+
+        if not rol:
+            raise ValueError(f"Rol {roleName} no existe")
+        return rol
 
 
 ================================================================================
@@ -3161,9 +3260,9 @@ class CargoEnum(Enum):
     director = "director"
     cajero = "cajero"
     despachador_comida = "despachador_comida"
-    encargado_sala = "encargado_sala"
+    encargadoSala = "encargado sala"
     aseador = "aseador"
-    administrador = "administrador" # Para compatibilidad con contrato POST /empleados
+    administrador = "administrador"
 
 
 
@@ -5605,6 +5704,76 @@ ARCHIVO: seeds\peliculas.py
 
 PELICULAS = []
 
+
+
+================================================================================
+ARCHIVO: seeds\permisos.py
+================================================================================
+
+from sqlalchemy import select
+from app.database import SessionLocal
+from app.infrastructure.models.permiso import Permiso
+
+PERMISOS = [
+    "crear-empleado",
+    "editar-empleado",
+    "deshabilitar-empleado",
+    "crear-multiplex",
+    "editar-multiplex",
+    "crear-sala",
+    "editar-sala",
+    "crear-funcion",
+    "editar-funcion"
+]
+
+
+def run():
+    db = SessionLocal()
+    try:
+        for permisoName in PERMISOS:
+            stmt = select(Permiso).where(Permiso.nombre == permisoName)
+            exists = (db.execute(stmt).scalar_one_or_none())
+
+            if exists:
+                continue
+
+            permiso = Permiso(nombre=permisoName)
+            db.add(permiso)
+        db.commit()
+    finally:
+        db.close()
+
+
+================================================================================
+ARCHIVO: seeds\roles.py
+================================================================================
+
+from sqlalchemy import select
+from app.database import SessionLocal
+from app.infrastructure.models.rol import Rol
+
+ROLES = [
+    "CLIENTE",
+    "EMPLEADO-CAJERO",
+    "EMPLEADO-OTRO",
+    "ADMIN-MULTIPLEX",
+    "ADMIN-GENERAL"
+]
+
+def run():
+    db = SessionLocal()
+    try:
+        for roleName in ROLES:
+            stmt = select(Rol).where(Rol.nombre == roleName)
+            exists = (db.execute(stmt).scalar_one_or_none())
+
+            if exists:
+                continue
+            rol = Rol(nombre=roleName)
+            db.add(rol)
+        db.commit()
+    finally:
+        db.close()
 
 
 ================================================================================

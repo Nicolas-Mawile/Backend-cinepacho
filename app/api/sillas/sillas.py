@@ -2,11 +2,12 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.dependencies import get_current_admin_general
+from app.api.dependencies import requirePermission
 from app.database import SessionLocal
 from app.infrastructure.repositories.silla_repository import SillaRepository
 from app.domain.services.sala_service import SalaService
 from app.domain.exceptions import SalaNotFoundError
+from app.infrastructure.models.usuario import Usuario
 
 router = APIRouter(prefix="/api/v1", tags=["Sillas"])
 
@@ -41,7 +42,7 @@ def get_sala_service():
 def contar_sillas_sala(
     sala_id: int,
     sala_service: SalaService = Depends(get_sala_service),
-    _: dict = Depends(get_current_admin_general),
+    _: Usuario = Depends(requirePermission("ver-detalles-sillas-sala")),
 ):
     """
     Obtiene la cantidad de sillas que se le van a cargar a una sala.
@@ -87,7 +88,7 @@ def listar_sillas_multiplex(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=500),
     repo: SillaRepository = Depends(get_silla_repository),
-    _: dict = Depends(get_current_admin_general),
+    _: Usuario = Depends(requirePermission("listar-sillas-multiplex")),
 ):
     """
     Lista todas las sillas de un multiplex.
@@ -123,7 +124,7 @@ def listar_sillas_multiplex(
 def desactivar_sillas_multiplex(
     multiplex_id: int,
     repo: SillaRepository = Depends(get_silla_repository),
-    _: dict = Depends(get_current_admin_general),
+    _: Usuario = Depends(requirePermission("desactivar-sillas-multiplex")),
 ):
     """
     Desactiva todas las sillas activas de un multiplex.
@@ -163,7 +164,7 @@ def obtener_detalles_sillas_sala(
     sala_id: int,
     sala_service: SalaService = Depends(get_sala_service),
     repo: SillaRepository = Depends(get_silla_repository),
-    _: dict = Depends(get_current_admin_general),
+    _: Usuario = Depends(requirePermission("ver-detalles-sillas-sala")),
 ):
     """
     Obtiene detalles completos sobre las sillas de una sala.

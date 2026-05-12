@@ -11,8 +11,8 @@ from app.infrastructure.models.rol import Rol
 from app.infrastructure.repositories.usuarioRepository import UsuarioRepository
 from app.domain.services.auth_service import AuthService
 from app.api.dependencies import get_current_user
-from cinepachobackend.app.infrastructure.models.cliente import Cliente
-from cinepachobackend.app.infrastructure.repositories.cliente_repository import ClienteRepository
+from app.infrastructure.models.cliente import Cliente
+from app.infrastructure.repositories.cliente_repository import ClienteRepository
 
 router = APIRouter(
     prefix="/auth",
@@ -57,9 +57,9 @@ def registro(datos: RegistroRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Rol CLIENTE no existe")
 
     usuario = Usuario(
-        password=authService.hashPassword(datos.password),
-        persona_id=persona.id,
-        rol_id=rolCliente.id)
+        passwordHash=authService.hashPassword(datos.password),
+        personaId=persona.id,
+        rolId=rolCliente.id)
 
     db.add(usuario)
     db.commit()
@@ -83,7 +83,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     usuarioRepo = UsuarioRepository(db)
     authService = AuthService()
 
-    usuario = usuarioRepo.buscarPorCorreo(data.email)
+    usuario = usuarioRepo.buscarPorCorreo(data.correo)
     if not usuario:
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
     
@@ -93,7 +93,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     if usuario.bloqueadoHasta and usuario.bloqueadoHasta > datetime.now(datetime.timezone.utc):
         raise HTTPException(status_code=403, detail="Usuario bloqueado temporalmente")
 
-    validPassword = authService.verifyPassword(data.password, usuario.password)
+    validPassword = authService.verifyPassword(data.password, usuario.passwordHash)
     if not validPassword:
         usuario.inetentosFallidos += 1
 
@@ -124,9 +124,9 @@ def me(user=Depends(get_current_user)):
     permisos = [permiso.nombre for permiso in user.rol.permisos]
     return {
         "id": user.id,
-        "nombre": user.persona.nombre,
-        "apellido": user.persona.apellido,
-        "email": user.persona.email,
+        "nombres": user.persona.nombres,
+        "apellidos": user.persona.apellidos,
+        "correo": user.persona.correo,
         "rol": user.rol.nombre,
         "permisos": permisos
     }

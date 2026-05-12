@@ -4,11 +4,12 @@ from app.api.schemas.multiplex import (
 )
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.dependencies import get_current_admin_general
+from app.api.dependencies import requirePermission
 from app.infrastructure.repositories.multiplex_repository import MultiplexRepository
 from app.domain.services.multiplex_service import generar_codigo
 from app.domain.services.sala_service import SalaService
 from app.infrastructure.models import Multiplex
+from app.infrastructure.models.usuario import Usuario
 
 router = APIRouter(prefix="/admin/multiplex", tags=["Admin - Multiplex"])
 
@@ -26,7 +27,7 @@ def get_repository():
 def listar_multiplex(ciudad: str | None = Query(None), activo: bool | None = Query(None),
                            pagina: int = Query(1, ge=1), limite: int = Query(20, ge=1, le=100),
                            repo: MultiplexRepository = Depends(get_repository),
-                           _: dict = Depends(get_current_admin_general),):
+                           _: Usuario = Depends(requirePermission("ver-listado-multiplex")),):
     
     skip = (pagina - 1) * limite
     return repo.listar(skip=skip, ciudad=ciudad, activo=activo, limite=limite)
@@ -34,7 +35,7 @@ def listar_multiplex(ciudad: str | None = Query(None), activo: bool | None = Que
 
 @router.post("/", response_model=MultiplexResponse, status_code=201)
 def crear_multiplex(datos: MultiplexCreate, repo: MultiplexRepository = Depends(get_repository),
-                          _: dict = Depends(get_current_admin_general),):
+                          _: Usuario = Depends(requirePermission("crear-multiplex")),):
     
     code = generar_codigo(datos.nombre, repo)
     multiplex = Multiplex(**datos.model_dump(), codigo=code)
@@ -49,7 +50,7 @@ def crear_multiplex(datos: MultiplexCreate, repo: MultiplexRepository = Depends(
 @router.put("/{id}", response_model=MultiplexResponse)
 def editar_multiplex(id: str, datos: MultiplexUpdate,
                            repo: MultiplexRepository = Depends(get_repository),
-                           _: dict = Depends(get_current_admin_general),):
+                           _: Usuario = Depends(requirePermission("actualizar-multiplex")),):
     
     existente = repo.buscar_por_id(id)
     if not existente:
@@ -63,8 +64,7 @@ def cambiar_estado_multiplex(
     id: int,
     activo: bool,
     repo: MultiplexRepository = Depends(get_repository),
-    _: dict = Depends(get_current_admin_general),
-):
+    _: Usuario = Depends(requirePermission("deshabilitar-multiplex")),):
     multiplex = repo.buscar_por_id(id)
 
     if not multiplex:

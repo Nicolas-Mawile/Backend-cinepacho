@@ -2,8 +2,8 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class RegistroRequest(BaseModel):
-    nombre: str = Field(..., min_length=2, max_length=150)
-    apellido: str = Field(..., min_length=2, max_length=150)
+    nombres: str = Field(..., min_length=2, max_length=150)
+    apellidos: str = Field(..., min_length=2, max_length=150)
     correo: EmailStr
     telefono: str | None
     password: str = Field(..., min_length=8)

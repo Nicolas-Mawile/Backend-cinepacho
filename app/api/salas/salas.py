@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.dependencies import get_current_admin_general
+from app.api.dependencies import requirePermission
 from app.api.schemas.sala import SalaCreate, SalaUpdate, SalaResponse
 from app.database import SessionLocal
 from app.domain.services.sala_service import SalaService
@@ -13,6 +13,7 @@ from app.domain.exceptions import (
     DuplicateNumeroSalaError,
     SalaConfigurationError,
 )
+from app.infrastructure.models.usuario import Usuario
 
 router = APIRouter(tags=["Salas"])
 
@@ -57,8 +58,7 @@ def crear_sala(
     multiplex_id: int,
     datos: SalaCreate,
     service: SalaService = Depends(get_service),
-    _: dict = Depends(get_current_admin_general),
-):
+    _: Usuario = Depends(requirePermission("crear-sala")),):
     """
     Crea una nueva sala en un multiplex.
     
@@ -93,8 +93,7 @@ def listar_salas_multiplex(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
     service: SalaService = Depends(get_service),
-    _: dict = Depends(get_current_admin_general),
-):
+    _: Usuario = Depends(requirePermission("ver-salas-multiplex")),):
     """
     Lista todas las salas de un multiplex.
     
@@ -121,8 +120,7 @@ def listar_salas_multiplex(
 def obtener_sala(
     sala_id: int,
     service: SalaService = Depends(get_service),
-    _: dict = Depends(get_current_admin_general),
-):
+    _: Usuario = Depends(requirePermission("ver-sala")),):
     """
     Obtiene los datos de una sala específica.
     
@@ -149,8 +147,7 @@ def actualizar_sala(
     sala_id: int,
     datos: SalaUpdate,
     service: SalaService = Depends(get_service),
-    _: dict = Depends(get_current_admin_general),
-):
+    _: Usuario = Depends(requirePermission("actualizar-sala")),):
     """
     Actualiza una sala existente.
     
@@ -180,8 +177,7 @@ def actualizar_sala(
 def eliminar_sala(
     sala_id: int,
     service: SalaService = Depends(get_service),
-    _: dict = Depends(get_current_admin_general),
-):
+    _: Usuario = Depends(requirePermission("eliminar-sala")),):
     """
     Elimina una sala.
     
@@ -207,8 +203,7 @@ def cambiar_estado_sala(
     sala_id: int,
     activo: bool = Query(..., description="Nuevo estado: True (activa) o False (inactiva)"),
     service: SalaService = Depends(get_service),
-    _: dict = Depends(get_current_admin_general),
-):
+    _: Usuario = Depends(requirePermission("cambiar-estado-sala")),):
     """
     Cambia el estado de una sala (activa/inactiva).
     
