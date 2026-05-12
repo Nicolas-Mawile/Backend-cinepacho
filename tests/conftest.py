@@ -7,6 +7,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import Session, sessionmaker
 from app.main import app
+from app.infrastructure.models.multiplex_cartelera import MultiplexCartelera
+from app.infrastructure.models.pelicula import Pelicula
 from app.infrastructure.models.base import Base as InfraBase
 from app.infrastructure import models as _infra_models
 from app.models.base import Base as LegacyBase
@@ -29,11 +31,11 @@ TestingSessionLocal = sessionmaker(bind=engine, class_=Session, expire_on_commit
 
 @pytest.fixture(autouse=True)
 def setup_db():
-    InfraBase.metadata.create_all(bind=engine)
     LegacyBase.metadata.create_all(bind=engine)
+    InfraBase.metadata.create_all(bind=engine)
     yield
-    LegacyBase.metadata.drop_all(bind=engine)
     InfraBase.metadata.drop_all(bind=engine)
+    LegacyBase.metadata.drop_all(bind=engine)
 
 @pytest.fixture
 def db_session():

@@ -6,6 +6,8 @@ from fastapi import APIRouter
 from app.api.v1.multiplex.multiplex import router as multiplex_router
 from app.api.v1.salas import router as salas_router
 from app.api.v1.peliculas import router as peliculas_router
+from app.api.v1.funciones import router as funciones_router
+from app.api.v1.cartelera import router as cartelera_router
 # from app.api.v1.peliculas import router as peliculas_router
 # from app.api.v1.sillas import router as sillas_router
 # from app.api.v1.funciones import router as funciones_router
@@ -16,6 +18,8 @@ from app.api.v1.peliculas import router as peliculas_router
 # from app.api.v1.comidas import router as comidas_router
 # from app.api.v1.compra import router as compra_router
 # from app.api.v1.reportes import router as reportes_router
+
+
 
 # Router principal
 router = APIRouter()
@@ -28,6 +32,8 @@ router = APIRouter()
 router.include_router(multiplex_router)
 router.include_router(salas_router)
 router.include_router(peliculas_router)
+router.include_router(funciones_router)
+router.include_router(cartelera_router)
 # router.include_router(sillas_router)
 # router.include_router(funciones_router)
 # router.include_router(peliculas_router)
