@@ -119,3 +119,26 @@ def validateMultiplexAccess(user: Usuario, multiplexId: int):
 #     def check_multiplex(current_user=Depends(get_current_user)):
 #         return current_user
 #     return check_multiplex
+
+
+
+# Aliases para compatibilidad con endpoints existentes
+def get_current_admin_general(user=Depends(get_current_user)):
+    if user.rol is None or user.rol.nombre != "ADMIN-GENERAL":
+        raise HTTPException(status_code=403, detail="Se requiere rol ADMIN-GENERAL")
+    return user
+
+def get_current_admin_mx(user=Depends(get_current_user)):
+    if user.rol is None or user.rol.nombre != "ADMIN-MULTIPLEX":
+        raise HTTPException(status_code=403, detail="Se requiere rol ADMIN-MULTIPLEX")
+    return user
+
+def get_current_cajero(user=Depends(get_current_user)):
+    if user.rol is None or user.rol.nombre != "EMPLEADO-CAJERO":
+        raise HTTPException(status_code=403, detail="Se requiere rol EMPLEADO-CAJERO")
+    return user
+
+def get_current_cliente(user=Depends(get_current_user)):
+    if user.rol is None or user.rol.nombre != "CLIENTE":
+        raise HTTPException(status_code=403, detail="Se requiere rol CLIENTE")
+    return user
