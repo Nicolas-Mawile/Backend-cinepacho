@@ -54,7 +54,7 @@ class EmpleadoDetalle(BaseModel):
     cargoActual: Optional[CargoEnum]
     multiplexActual: Optional[str]
     salarioActual: Optional[float]
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     model_config = {
         "from_attributes": True
@@ -76,3 +76,9 @@ class EmpleadoPaginated(BaseModel):
     limit: int
     total_pages: int
     data: List[EmpleadoListElement]
+
+class CambiarEstadoEmpleadoRequest(BaseModel):
+    """
+    Request para activar/desactivar empleado.
+    """
+    activo: bool

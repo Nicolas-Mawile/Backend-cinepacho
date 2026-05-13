@@ -4,7 +4,7 @@ from fastapi import (APIRouter, Depends, HTTPException, Query)
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.api.dependencies import (requirePermission)
-from app.api.schemas.empleado import (EmpleadoCrearRequest, EmpleadoDetalle, EmpleadoListElement)
+from app.api.schemas.empleado import (CambiarEstadoEmpleadoRequest, EmpleadoCrearRequest, EmpleadoDetalle, EmpleadoListElement)
 from app.infrastructure.repositories.empleado_repository import (EmpleadoRepository)
 from app.domain.services.empleado_service import (EmpleadoService)
 from app.infrastructure.models.usuario import Usuario
@@ -38,11 +38,7 @@ def listar_empleados(pagina: int = Query(1, ge=1), limite: int = Query(10, ge=1,
             "nombres": empleado.nombres,
             "apellidos": empleado.apellidos,
             "cargoActual": empleado.cargoActual,
-            "multiplexActual": (
-                empleado.multiplexActual.nombre
-                if empleado.multiplexActual
-                else None
-            )
+            "multiplexActual": empleado.multiplexActual,
         })
 
     return response
@@ -55,12 +51,19 @@ def obtener_empleado(id: int, repo: EmpleadoRepository = Depends(get_repository)
         raise HTTPException(status_code=404, detail="Empleado no encontrado")
     return empleado
 
-@router.patch("/{id}/deshabilitar")
-def deshabilitar_empleado(id: int, repo: EmpleadoRepository = Depends(get_repository),_: Usuario = Depends(requirePermission("deshabilitar-empleado"))):
+@router.patch("/{id}/estado", summary="Cambiar estado de un empleado", 
+              responses={200: {"description": "Estado actualizado correctamente"}, 404: {"description": "Empleado no encontrado"}})
+def cambiar_estado_empleado(id: int, activo: bool, repo: EmpleadoRepository = Depends(get_repository), _: Usuario = Depends(requirePermission("cambiar-estado-empleado"))):
+    empleado = repo.cambiarEstado(id, activo)
 
-    empleado = repo.buscar_por_id(id)
     if not empleado:
-        raise HTTPException(status_code=404, detail="Empleado no encontrado")
+        raise HTTPException(status_code=404,detail="Empleado no encontrado")
 
-    repo.desactivar(id)
-    return {"message": "Empleado deshabilitado correctamente"}
+    return {"message": ("Empleado activado correctamente" if empleado.activo else "Empleado deshabilitado correctamente"),
+        "empleado": {
+            "id": empleado.id,
+            "nombres": empleado.nombres,
+            "apellidos": empleado.apellidos,
+            "activo": empleado.activo
+        }
+    }

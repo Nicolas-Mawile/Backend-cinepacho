@@ -60,11 +60,8 @@ def editar_multiplex(id: str, datos: MultiplexUpdate,
 
 
 @router.patch("/{id}/estado", response_model=MultiplexResponse)
-def cambiar_estado_multiplex(
-    id: int,
-    activo: bool,
-    repo: MultiplexRepository = Depends(get_repository),
-    _: Usuario = Depends(requirePermission("deshabilitar-multiplex")),):
+def cambiar_estado_multiplex(id: int, activo: bool,
+    repo: MultiplexRepository = Depends(get_repository), _: Usuario = Depends(requirePermission("cambiar-estado-multiplex")),):
     multiplex = repo.buscar_por_id(id)
 
     if not multiplex:

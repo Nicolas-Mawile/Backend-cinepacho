@@ -35,40 +35,41 @@ def _buildUsuarioResponse(usuario: Usuario) -> dict:
 def registro(datos: RegistroRequest, db: Session = Depends(get_db)):
     """Registra un nuevo usuario y genera un token de acceso. ES PARA REGISTRAR CLIENTES, LOS EMPLEADOS LOS REGISTRAN LOS ADMIN."""
     usuarioRepo = UsuarioRepository(db)
-    clienteRepo = ClienteRepository(db)
     authService = AuthService()
 
     existeUsuario = usuarioRepo.buscarPorCorreo(datos.correo)
     if existeUsuario:
         raise HTTPException(status_code=409, detail="Correo ya registrado")
 
-    persona = Persona(
-        nombres=datos.nombres,
-        apellidos=datos.apellidos,
-        correo=datos.correo,
-        telefono=datos.telefono,)
-
-    db.add(persona)
-    db.commit()
-    db.refresh(persona)
 
     rolCliente = db.query(Rol).filter(Rol.nombre == "CLIENTE").first()
     if not rolCliente:
         raise HTTPException(status_code=500, detail="Rol CLIENTE no existe")
+    
+    cliente = Cliente(
+        nombres = datos.nombres,
+        apellidos = datos.apellidos,
+        correo = datos.correo,
+        telefono = datos.telefono
+    )
+    db.add(cliente)
+    db.flush()
 
     usuario = Usuario(
         passwordHash=authService.hashPassword(datos.password),
-        personaId=persona.id,
+        personaId=cliente.id,
         rolId=rolCliente.id)
 
     db.add(usuario)
+    db.flush()
+
+    cliente.usuarioId = usuario.id
     db.commit()
+
+    db.refresh(cliente)
     db.refresh(usuario)
 
-    cliente = Cliente(id=persona.id, usuarioId=usuario.id, puntosAcumulados=0)
-    db.add(cliente)
-    db.commit()
-
+    
     token = authService.createAccessToken(data={"sub": str(usuario.id), "role": usuario.rol.nombre})
     refreshToken = (authService.createRefreshToken(data={"sub": str(usuario.id)}))
     return {"access_token": token,

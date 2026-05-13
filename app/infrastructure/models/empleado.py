@@ -41,5 +41,9 @@ class Empleado(Persona):
     def multiplexActual(self):
         """Retorna el multiplex actual del empleado."""
         contrato = self.contratoActivo
-        return contrato.multiplex if contrato else None
+        return contrato.multiplex.nombre if contrato and contrato.multiplex else None
     
+    @property
+    def salarioActual(self):
+        contrato = self.contratoActivo
+        return float(contrato.salario) if contrato else None

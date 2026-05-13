@@ -149,3 +149,13 @@ class EmpleadoRepository(AbstractRepository[Empleado]):
         stmt = select(Empleado).where(Empleado.correoLaboral == correoLaboral)
         result = self.db.execute(stmt)
         return result.scalar_one_or_none()
+    
+    def cambiarEstado(self, entity_id: int, activo: bool) -> Empleado | None:
+        empleado = self.buscar_por_id(entity_id)
+        if not empleado:
+            return None
+        
+        empleado.activo = activo
+        self.db.commit()
+        self.db.refresh(empleado)
+        return empleado

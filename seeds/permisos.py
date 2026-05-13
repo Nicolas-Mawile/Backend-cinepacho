@@ -26,7 +26,7 @@ PERMISOS = [
     # =====================================================
     "crear-empleado",
     "actualizar-empleado",
-    "deshabilitar-empleado",
+    "cambiar-estado-empleado",
     "ver-listado-empleados",
     "ver-detalle-empleado",
     "ver-hoja-vida",
@@ -43,16 +43,17 @@ PERMISOS = [
     # =====================================================
     "crear-multiplex",
     "actualizar-multiplex",
-    "deshabilitar-multiplex",
+    "cambiar-estado-multiplex",
     "ver-listado-multiplex",
     "ver-detalle-multiplex",
+    "ver-salas-multiplex",
 
     # =====================================================
     # SALAS
     # =====================================================
     "crear-sala",
     "actualizar-sala",
-    "deshabilitar-sala",
+    "cambiar-estado-sala",
     "ver-listado-salas",
     "ver-detalle-sala",
 
@@ -61,8 +62,7 @@ PERMISOS = [
     # =====================================================
     "crear-pelicula",
     "actualizar-pelicula",
-    "deshabilitar-pelicula",
-    "habilitar-pelicula",
+    "cambiar-estado-pelicula",
     "ver-listado-peliculas",
     "ver-detalle-pelicula",
 
@@ -71,7 +71,7 @@ PERMISOS = [
     # =====================================================
     "crear-snack",
     "actualizar-snack",
-    "deshabilitar-snack",
+    "cambiar-estado-snack",
     "ver-listado-snacks",
     "ver-detalle-snack",
 
@@ -80,7 +80,7 @@ PERMISOS = [
     # =====================================================
     "crear-funcion",
     "actualizar-funcion",
-    "deshabilitar-funcion",
+    "cambiar-estado-funcion",
     "ver-listado-funciones-multiplex",
     "ver-detalle-funcion",
 
