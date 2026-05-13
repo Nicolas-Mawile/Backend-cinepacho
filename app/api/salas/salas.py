@@ -2,20 +2,14 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.dependencies import get_current_admin_general
+from app.api.dependencies import requirePermission
 from app.api.schemas.sala import SalaCreate, SalaUpdate, SalaResponse
 from app.database import SessionLocal
 from app.domain.services.sala_service import SalaService
-from app.domain.exceptions import (
-    SalaNotFoundError,
-    MultiplexNotFoundError,
-    SalaLimitExceededError,
-    DuplicateNumeroSalaError,
-    SalaConfigurationError,
-)
+from app.domain.exceptions import (SalaNotFoundError, MultiplexNotFoundError, SalaLimitExceededError, DuplicateNumeroSalaError, SalaConfigurationError,)
+from app.infrastructure.models.usuario import Usuario
 
 router = APIRouter(tags=["Salas"])
-
 
 def get_service():
     """Obtiene instancia del servicio de salas."""
@@ -24,7 +18,6 @@ def get_service():
         yield SalaService(db)
     finally:
         db.close()
-
 
 # Mapeo de excepciones de dominio a respuestas HTTP
 def handle_domain_error(exc: Exception):
@@ -42,23 +35,12 @@ def handle_domain_error(exc: Exception):
     raise exc
 
 
-@router.post(
-    "/multiplex/{multiplex_id}/salas",
-    response_model=SalaResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Crear sala en un multiplex",
-    responses={
-        201: {"description": "Sala creada exitosamente"},
-        404: {"description": "Multiplex no encontrado"},
-        409: {"description": "Conflicto: límite de salas alcanzado o número duplicado"},
-    },
-)
-def crear_sala(
-    multiplex_id: int,
-    datos: SalaCreate,
-    service: SalaService = Depends(get_service),
-    _: dict = Depends(get_current_admin_general),
-):
+@router.post("/multiplex/{multiplex_id}/salas", response_model=SalaResponse, status_code=status.HTTP_201_CREATED, 
+             summary="Crear sala en un multiplex", responses={
+                 201: {"description": "Sala creada exitosamente"},
+                 404: {"description": "Multiplex no encontrado"},
+                 409: {"description": "Conflicto: límite de salas alcanzado o número duplicado"},},)
+def crear_sala(multiplex_id: int, datos: SalaCreate, service: SalaService = Depends(get_service), _: Usuario = Depends(requirePermission("crear-sala")),):
     """
     Crea una nueva sala en un multiplex.
     
@@ -79,22 +61,10 @@ def crear_sala(
         handle_domain_error(e)
 
 
-@router.get(
-    "/multiplex/{multiplex_id}/salas",
-    response_model=list[SalaResponse],
-    summary="Listar salas por multiplex",
-    responses={
-        200: {"description": "Lista de salas"},
-        404: {"description": "Multiplex no encontrado"},
-    },
-)
-def listar_salas_multiplex(
-    multiplex_id: int,
-    skip: int = Query(0, ge=0),
-    limit: int = Query(10, ge=1, le=100),
-    service: SalaService = Depends(get_service),
-    _: dict = Depends(get_current_admin_general),
-):
+@router.get("/multiplex/{multiplex_id}/salas", response_model=list[SalaResponse], summary="Listar salas por multiplex",
+            responses={200: {"description": "Lista de salas"}, 404: {"description": "Multiplex no encontrado"},},)
+def listar_salas_multiplex(multiplex_id: int, skip: int = Query(0, ge=0), limit: int = Query(10, ge=1, le=100), service: SalaService = Depends(get_service),
+                            _: Usuario = Depends(requirePermission("ver-salas-multiplex")),):
     """
     Lista todas las salas de un multiplex.
     
@@ -108,21 +78,9 @@ def listar_salas_multiplex(
     except MultiplexNotFoundError as e:
         handle_domain_error(e)
 
-
-@router.get(
-    "/salas/{sala_id}",
-    response_model=SalaResponse,
-    summary="Obtener una sala específica",
-    responses={
-        200: {"description": "Sala encontrada"},
-        404: {"description": "Sala no encontrada"},
-    },
-)
-def obtener_sala(
-    sala_id: int,
-    service: SalaService = Depends(get_service),
-    _: dict = Depends(get_current_admin_general),
-):
+@router.get("/salas/{sala_id}", response_model=SalaResponse, summary="Obtener una sala específica", 
+            responses={200: {"description": "Sala encontrada"}, 404: {"description": "Sala no encontrada"},},)
+def obtener_sala(sala_id: int, service: SalaService = Depends(get_service), _: Usuario = Depends(requirePermission("ver-detalle-sala")),):
     """
     Obtiene los datos de una sala específica.
     
@@ -135,22 +93,9 @@ def obtener_sala(
         handle_domain_error(e)
 
 
-@router.put(
-    "/salas/{sala_id}",
-    response_model=SalaResponse,
-    summary="Actualizar una sala",
-    responses={
-        200: {"description": "Sala actualizada"},
-        404: {"description": "Sala no encontrada"},
-        409: {"description": "Conflicto: número duplicado"},
-    },
-)
-def actualizar_sala(
-    sala_id: int,
-    datos: SalaUpdate,
-    service: SalaService = Depends(get_service),
-    _: dict = Depends(get_current_admin_general),
-):
+@router.put("/salas/{sala_id}", response_model=SalaResponse, summary="Actualizar una sala",
+            responses={200: {"description": "Sala actualizada"}, 404: {"description": "Sala no encontrada"}, 409: {"description": "Conflicto: número duplicado"},},)
+def actualizar_sala(sala_id: int, datos: SalaUpdate, service: SalaService = Depends(get_service), _: Usuario = Depends(requirePermission("actualizar-sala")),):
     """
     Actualiza una sala existente.
     
@@ -168,25 +113,12 @@ def actualizar_sala(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.delete(
-    "/salas/{sala_id}",
-    status_code=status.HTTP_200_OK,
-    summary="Eliminar una sala",
-    responses={
-        200: {"description": "Sala eliminada"},
-        404: {"description": "Sala no encontrada"},
-    },
-)
-def eliminar_sala(
-    sala_id: int,
-    service: SalaService = Depends(get_service),
-    _: dict = Depends(get_current_admin_general),
-):
+@router.delete("/salas/{sala_id}", status_code=status.HTTP_200_OK, summary="Eliminar una sala",
+               responses={200: {"description": "Sala eliminada"}, 404: {"description": "Sala no encontrada"},},)
+def eliminar_sala(sala_id: int, service: SalaService = Depends(get_service), _: Usuario = Depends(requirePermission("eliminar-sala")),):
     """
     Elimina una sala.
-    
     - **sala_id**: ID de la sala
-    
     **Nota**: Por ahora no valida dependencias (funciones, sillas).
     """
     if not service.eliminar_sala(sala_id):
@@ -194,21 +126,10 @@ def eliminar_sala(
     return {"message": "Sala eliminada"}
 
 
-@router.patch(
-    "/salas/{sala_id}/estado",
-    response_model=SalaResponse,
-    summary="Cambiar estado de una sala",
-    responses={
-        200: {"description": "Estado actualizado"},
-        404: {"description": "Sala no encontrada"},
-    },
-)
-def cambiar_estado_sala(
-    sala_id: int,
-    activo: bool = Query(..., description="Nuevo estado: True (activa) o False (inactiva)"),
-    service: SalaService = Depends(get_service),
-    _: dict = Depends(get_current_admin_general),
-):
+@router.patch("/salas/{sala_id}/estado", response_model=SalaResponse, summary="Cambiar estado de una sala",
+              responses={200: {"description": "Estado actualizado"}, 404: {"description": "Sala no encontrada"},},)
+def cambiar_estado_sala(sala_id: int, activo: bool = Query(..., description="Nuevo estado: True (activa) o False (inactiva)"),
+                        service: SalaService = Depends(get_service), _: Usuario = Depends(requirePermission("cambiar-estado-sala")),):
     """
     Cambia el estado de una sala (activa/inactiva).
     

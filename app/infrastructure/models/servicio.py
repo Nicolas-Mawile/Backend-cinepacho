@@ -7,6 +7,6 @@ class Servicio(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     nombre = Column(String, nullable=False)
-    precio = Column(Integer)
+    #precio = Column(Integer)
 
     evaluaciones = relationship("Evaluacion", back_populates="servicio")

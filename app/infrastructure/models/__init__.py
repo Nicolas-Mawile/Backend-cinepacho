@@ -7,6 +7,7 @@ from .configuracion import Configuracion
 from .contrato import Contrato
 from .detalleFactura import DetalleFactura
 from .empleado import Empleado
+from .historial_cargo import HistorialCargo
 from .evaluacion import Evaluacion
 from .factura import Factura
 from .funcion import Funcion
@@ -15,6 +16,7 @@ from .pago import Pago
 from .pelicula import Pelicula
 from .permiso import Permiso
 from .persona import Persona
+from .refrescar_token import RefreshToken
 from .rol_permiso import rol_permiso
 from .rol import Rol
 from .sala import Sala

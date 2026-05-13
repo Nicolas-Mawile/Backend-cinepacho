@@ -3,8 +3,12 @@ from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey
 from .base import Base, TimestampMixin
 
 class RefreshToken(Base, TimestampMixin):
+    """
+    Tokens de refresco asociados
+    a usuarios autenticados.
+    """
     id = Column(Integer, primary_key=True, autoincrement=True)
-    cliente_id = Column(Integer, ForeignKey("cliente.id"), nullable=False)
-    token_hash = Column(String, nullable=False)
-    expires_at = Column(DateTime, nullable=False)
+    usuarioId = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    tokenHash = Column(String, nullable=False)
+    expiresAt = Column(DateTime, nullable=False)
     revocado = Column(Boolean, default=False)

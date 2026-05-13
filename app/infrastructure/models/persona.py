@@ -1,15 +1,20 @@
-from sqlalchemy import Column, Date, Integer, String
+from sqlalchemy import Column, Boolean, Integer, String
 
-from .base import Base, TimestampMixin
+from .base import Base
 
-class Persona(Base, TimestampMixin):
+class Persona(Base):
+    """
+    Entidad base que representa información humana
+    compartida entre clientes y empleados.
+    """
     __tablename__ = "personas"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    nombre = Column(String, nullable=False)
-    apellido = Column(String, nullable=False)
-    email = Column(String, nullable=True)
+    nombres = Column(String, nullable=False)
+    apellidos = Column(String, nullable=False)
+    correo = Column(String, nullable=True)
     telefono = Column(String, nullable=True)
+    activo = Column(Boolean, default=True)
 
     tipo = Column(String(50))
 

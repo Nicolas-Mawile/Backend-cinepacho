@@ -2,7 +2,7 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-from app.models.refrescar_token import RefreshToken
+from app.infrastructure.models.refrescar_token import RefreshToken
 import hashlib
 
 
