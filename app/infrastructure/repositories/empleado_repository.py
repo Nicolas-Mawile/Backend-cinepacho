@@ -112,18 +112,24 @@ class EmpleadoRepository(AbstractRepository[Empleado]):
         result = self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    def siguiente_numero_secuencia(self, multiplex_id: int) -> int:
+    def siguiente_numero_secuencia(self, multiplex_codigo: str) -> int:
         """Obtiene el siguiente número secuencial usando MAX(seq)+1.
         Bloquea el multiplex para evitar colisiones en la secuencia.
         """
-        from app.infrastructure.models.multiplex import Multiplex
-        # Bloquear la fila del multiplex para serializar la generación de secuencias en este multiplex
-        stmt_lock = select(Multiplex.id).where(Multiplex.id == multiplex_id).with_for_update()
-        self.db.execute(stmt_lock)
-        
-        stmt = select(func.max(Empleado.seq)).where(Empleado.multiplex_id == multiplex_id)
-        max_seq = self.db.execute(stmt).scalar()
-        return (max_seq or 0) + 1
+        prefijo = f"CP-{multiplex_codigo}-"
+        stmt = (select(Empleado.codigoEmpleado)
+                .where(Empleado.codigoEmpleado.like(f"{prefijo}%")).order_by(Empleado.id.desc()).limit(1))
+        ultimoCodigo = self.db.execute(stmt).scalar()
+
+        if not ultimoCodigo:
+            return 1
+
+        try:
+            numero = int(ultimoCodigo.split("-")[-1])
+            return numero + 1
+
+        except Exception:
+            return 1
 
     def obtener_ultimo_secuencial(self, multiplex_id: int) -> int:
         """Obtiene el último número secuencial (sin lock)."""

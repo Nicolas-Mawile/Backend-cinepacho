@@ -14,13 +14,13 @@ router = APIRouter(prefix="/admin/empleados", tags=["Admin - Empleados"])
 def get_repository(db: Session = Depends(get_db)):
     return EmpleadoRepository(db)
 
-@router.post("/", response_model=EmpleadoDetalle, status_code=201)
+@router.post("/", status_code=201)
 def crear_empleado(datos: EmpleadoCrearRequest, repo: EmpleadoRepository = Depends(get_repository), _: Usuario = Depends(requirePermission("crear-empleado"))):
 
     service = EmpleadoService(repo.db)
     try:
-        empleado = service.crearEmpleado(repo,datos.model_dump())
-        return empleado
+        resultado = service.crearEmpleado(repo,datos.model_dump())
+        return resultado
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -39,6 +39,7 @@ def listar_empleados(pagina: int = Query(1, ge=1), limite: int = Query(10, ge=1,
             "apellidos": empleado.apellidos,
             "cargoActual": empleado.cargoActual,
             "multiplexActual": empleado.multiplexActual,
+            "activo": empleado.activo
         })
 
     return response
