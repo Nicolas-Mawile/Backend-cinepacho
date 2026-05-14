@@ -19,10 +19,17 @@ class EmpleadoService:
         self.authService = AuthService()
 
     @staticmethod
-    def generarCorreoLaboral(nombres: str, apellidos: str) -> str:
+    def generarCorreoLaboral(nombres: str, apellidos: str, repo) -> str:
         primerNombre = nombres.lower().split()[0]
         primerApellido = apellidos.lower().split()[0]
-        return f"{primerNombre}.{primerApellido}@cinepacho.com"
+        baseCorreo = (f"{primerNombre}.{primerApellido}")
+        correo = f"{baseCorreo}@cinepacho.com"
+        contador = 1
+
+        while repo.buscarPorCorreoLaboral(correo):
+            correo = (f"{baseCorreo}{contador}"f"@cinepacho.com")
+            contador += 1
+        return correo
 
     @staticmethod
     def generarCodigoEmpleado(multiplexCodigo: str, secuencia: int) -> str:
@@ -36,31 +43,26 @@ class EmpleadoService:
             raise ValueError("Rol no encontrado")
         return rol
 
-    def crearEmpleado(self, repo: EmpleadoRepository, datos: dict) -> Empleado:
-
+    def crearEmpleado(self, repo: EmpleadoRepository, datos: dict):
         # ======================================
         # VALIDAR EMPLEADO EXISTENTE
         # ======================================
-
         empleadoExistente = repo.buscarPorCorreo(datos.get("correo"))
-
         if empleadoExistente:
             raise ValueError("Empleado ya existe")
 
         # ======================================
         # BUSCAR MULTIPLEX
         # ======================================
-
         stmt = select(Multiplex).where(Multiplex.id == datos.get("multiplexId"))
         multiplex = self.db.execute(stmt).scalar_one_or_none()
-
         if not multiplex:
             raise ValueError("Multiplex no encontrado")
 
         # ======================================
         # GENERAR SECUENCIA
         # ======================================
-        secuencia = repo.siguiente_numero_secuencia(datos.get("multiplexId"))
+        secuencia = repo.siguiente_numero_secuencia(multiplex.codigo)
 
         # ======================================
         # GENERAR CODIGO
@@ -70,70 +72,71 @@ class EmpleadoService:
         # ======================================
         # GENERAR CORREO LABORAL
         # ======================================
-        correoLaboral = self.generarCorreoLaboral(datos.get("nombres"), datos.get("apellidos"))
-
-        # ======================================
-        # VALIDAR CORREO LABORAL
-        # ======================================
-        correoExiste = repo.buscarPorCorreoLaboral(correoLaboral)
-
-        if correoExiste:
-            raise ValueError("Correo laboral ya generado anteriormente")
+        correoLaboral = self.generarCorreoLaboral(datos.get("nombres"), datos.get("apellidos"), repo)
 
         # ======================================
         # OBTENER ROL
         # ======================================
-        rol = self.obtenerRol(datos.get("cargo"))
+        rol = self.obtenerRolSegunCargo(datos.get("cargo"))
 
         # ======================================
-        # CREAR EMPLEADO
+        # CREAR USUARIO PRIMERO
         # ======================================
-        empleado = Empleado(
-            nombres=datos.get("nombres"),
-            apellidos=datos.get("apellidos"),
-            correo=datos.get("correo"),
-            telefono=datos.get("telefono"),
-            codigoEmpleado=codigoEmpleado,
-            correoLaboral=correoLaboral)
-        self.db.add(empleado)
-        self.db.flush()
-
-        # ======================================
-        # CREAR USUARIO
-        # ======================================
-        usuario = Usuario(passwordHash=self.authService.hashPassword(datos.get("password")), personaId=empleado.id, rolId=rol.id)
+        usuario = Usuario(passwordHash=self.authService.hashPassword(datos.get("password")), rolId=rol.id)
         self.db.add(usuario)
         self.db.flush()
 
         # ======================================
-        # ASOCIAR USUARIO
+        # CREAR EMPLEADO
         # ======================================
-        empleado.usuarioId = usuario.id
+        empleado = Empleado(usuarioId=usuario.id, nombres=datos.get("nombres"), apellidos=datos.get("apellidos"), correo=datos.get("correo"),
+                            telefono=datos.get("telefono"), codigoEmpleado=codigoEmpleado, correoLaboral=correoLaboral)
+        self.db.add(empleado)
+        self.db.flush()
+
+        # ======================================
+        # ASOCIAR PERSONA AL USUARIO
+        # ======================================
+        usuario.personaId = empleado.id
 
         # ======================================
         # CREAR CONTRATO
         # ======================================
-        contrato = Contrato(
-            empleadoId=empleado.id,
-            multiplexId=datos.get("multiplexId"),
-            salario=datos.get("salario"),
-            cargo=datos.get("cargo"),
-            fechaInicio=date.today(),
-            activo=True)
-
+        contrato = Contrato(empleadoId=empleado.id, multiplexId=datos.get("multiplexId"), salario=datos.get("salario"), cargo=datos.get("cargo"),
+                            fechaInicio=date.today(), activo=True)
         self.db.add(contrato)
+
         # ======================================
         # COMMIT
         # ======================================
         self.db.commit()
         self.db.refresh(empleado)
-        return empleado
+
+        # ======================================
+        # RESPUESTA
+        # ======================================
+
+        return {
+            "empleado": {
+                "id": empleado.id,
+                "codigoEmpleado": empleado.codigoEmpleado,
+                "correoLaboral": empleado.correoLaboral,
+                "nombres": empleado.nombres,
+                "apellidos": empleado.apellidos,
+                "activo": empleado.activo,
+            },
+
+            "credenciales": {
+                "correo": correoLaboral,
+                "password": datos.get("password")
+            }
+        }
     
     def obtenerRolSegunCargo(self, cargo: CargoEnum) -> Rol:
         if cargo == CargoEnum.cajero:
             roleName = RoleEnum.EMPLEADO_CAJERO.value
 
-        elif cargo in [CargoEnum.aseador, CargoEnum.despachador]:
+        elif cargo in [CargoEnum.aseador, CargoEnum.despachador_comida]:
             roleName = RoleEnum.EMPLEADO_OTRO.value
 
         elif cargo == CargoEnum.administrador:
