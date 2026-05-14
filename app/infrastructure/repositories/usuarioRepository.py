@@ -31,8 +31,16 @@ class UsuarioRepository:
     
     def buscarPorCorreoLogin(self, correo: str) -> Usuario | None:
         EmpleadoAlias = aliased(Empleado)
-        stmt = (select(Usuario).join(Persona, Usuario.personaId == Persona.id)
+        stmtEmpleado = (select(Usuario).join(Persona, Usuario.personaId == Persona.id)
             .outerjoin(EmpleadoAlias, EmpleadoAlias.id == Persona.id)
             .where(or_(Persona.correo == correo, EmpleadoAlias.correoLaboral == correo)))
-        result = self.db.execute(stmt)
+        usuarioEmpleado = (self.db.execute(stmtEmpleado)).scalar_one_or_none()
+
+        if usuarioEmpleado:
+            return usuarioEmpleado
+        
+        stmtPersona = (select(Usuario).join(Persona,Usuario.personaId == Persona.id)
+            .outerjoin(EmpleadoAlias,EmpleadoAlias.id == Persona.id).where(Persona.correo == correo, EmpleadoAlias.id.is_(None)))
+        result = self.db.execute(stmtPersona)
         return result.scalar_one_or_none()
+    
