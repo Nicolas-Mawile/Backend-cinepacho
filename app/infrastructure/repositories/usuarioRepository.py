@@ -1,6 +1,7 @@
 from operator import or_
 
-from sqlalchemy import select
+from sqlalchemy import select, or_
+
 from sqlalchemy.orm import Session, aliased, aliased
 
 from app.infrastructure.models.usuario import Usuario
@@ -14,7 +15,17 @@ class UsuarioRepository:
         self.db = db
 
     def buscarPorCorreo(self, correo: str):
-        stmt = (select(Usuario).join(Persona).where(Persona.correo == correo))
+        stmt = (
+        select(Usuario)
+        .join(Persona)
+        .outerjoin(Empleado, Empleado.id == Persona.id)
+        .where(
+            or_(
+                Persona.correo == correo,
+                Empleado.correoLaboral == correo
+            )
+        )
+    )
         result = self.db.execute(stmt)
         return result.scalar_one_or_none()
 
