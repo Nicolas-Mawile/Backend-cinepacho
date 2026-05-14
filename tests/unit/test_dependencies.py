@@ -3,8 +3,8 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from fastapi import HTTPException
 from app.api.dependencies import get_current_user, get_current_cliente, get_current_admin_general
-from app.models.cliente import Cliente
-from app.models.empleado import Empleado
+from app.infrastructure.models import Cliente
+from app.infrastructure.models import Empleado
 
 @pytest.mark.asyncio
 async def test_token_invalido_lanza_401():
