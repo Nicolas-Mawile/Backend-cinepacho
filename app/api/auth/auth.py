@@ -96,16 +96,16 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
 
     validPassword = authService.verifyPassword(data.password, usuario.passwordHash)
     if not validPassword:
-        usuario.inetentosFallidos += 1
+        usuario.intentosFallidos += 1
 
-        if usuario.inetentosFallidos >= 5:
+        if usuario.intentosFallidos >= 5:
             from datetime import timedelta
             usuario.bloqueadoHasta = datetime.now(datetime.timezone.utc) + timedelta(minutes=15)
         
         db.commit()
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
     
-    usuario.inetentosFallidos = 0
+    usuario.intentosFallidos = 0
     usuario.bloqueadoHasta = None
     db.commit()
 
