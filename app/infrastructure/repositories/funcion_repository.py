@@ -56,7 +56,7 @@ class FuncionRepository(AbstractRepository[Funcion]):
         )
         if excluir_id:
             stmt = stmt.where(Funcion.id != excluir_id)
-        result = self.db.execute(stmt)
+        result = self.db.execute(stmt.limit(1))
         return result.scalar_one_or_none() is not None
 
     def listar_por_multiplex(self, multiplex_id: int) -> list[Funcion]:

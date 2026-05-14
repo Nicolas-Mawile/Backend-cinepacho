@@ -129,16 +129,19 @@ def get_current_admin_general(user=Depends(get_current_user)):
     return user
 
 def get_current_admin_mx(user=Depends(get_current_user)):
-    if user.rol is None or user.rol.nombre != "ADMIN-MULTIPLEX":
+    roles_permitidos = {"ADMIN-MULTIPLEX", "ADMIN-GENERAL"}
+    if user.rol is None or user.rol.nombre not in roles_permitidos:
         raise HTTPException(status_code=403, detail="Se requiere rol ADMIN-MULTIPLEX")
     return user
 
 def get_current_cajero(user=Depends(get_current_user)):
-    if user.rol is None or user.rol.nombre != "EMPLEADO-CAJERO":
+    roles_permitidos = {"EMPLEADO-CAJERO", "ADMIN-MULTIPLEX", "ADMIN-GENERAL"}
+    if user.rol is None or user.rol.nombre not in roles_permitidos:
         raise HTTPException(status_code=403, detail="Se requiere rol EMPLEADO-CAJERO")
     return user
 
 def get_current_cliente(user=Depends(get_current_user)):
-    if user.rol is None or user.rol.nombre != "CLIENTE":
+    roles_permitidos = {"CLIENTE", "ADMIN-GENERAL"}
+    if user.rol is None or user.rol.nombre not in roles_permitidos:
         raise HTTPException(status_code=403, detail="Se requiere rol CLIENTE")
     return user
