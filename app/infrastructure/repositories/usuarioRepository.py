@@ -14,22 +14,23 @@ class UsuarioRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def buscarPorCorreo(self, correo: str):
+     def buscarPorCorreo(self, correo: str):
+        stmt = (
+            select(Usuario)
+            .join(Persona, Usuario.personaId == Persona.id)
+            .where(Persona.correo == correo)
+        )
 
-        if correo.endswith("@cinepacho.com"):
-            stmt = (
-                select(Usuario)
-                .join(Persona)
-                .join(Empleado, Empleado.id == Persona.id)
-                .where(Empleado.correoLaboral == correo)
-            )
+        result = self.db.execute(stmt)
+        usuario = result.scalar_one_or_none()
+        if usuario:
+            return usuario
 
-        else:
-            stmt = (
-                select(Usuario)
-                .join(Persona)
-                .where(Persona.correo == correo)
-            )
+        stmt = (
+            select(Usuario)
+            .join(Empleado, Usuario.personaId == Empleado.id)
+            .where(Empleado.correoLaboral == correo)
+        )
 
         result = self.db.execute(stmt)
         return result.scalar_one_or_none()
