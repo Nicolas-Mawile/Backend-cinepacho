@@ -14,7 +14,7 @@ class UsuarioRepository:
     def __init__(self, db: Session):
         self.db = db
 
-     def buscarPorCorreo(self, correo: str):
+    def buscarPorCorreo(self, correo: str):
         stmt = (
             select(Usuario)
             .join(Persona, Usuario.personaId == Persona.id)
