@@ -1,12 +1,10 @@
-from operator import or_
-
 from sqlalchemy import select
-
-from sqlalchemy.orm import Session, aliased, aliased
+from sqlalchemy.orm import Session
 
 from app.infrastructure.models.usuario import Usuario
 from app.infrastructure.models.persona import Persona
 from app.infrastructure.models.empleado import Empleado
+from app.infrastructure.models.cliente import Cliente
 
 
 class UsuarioRepository:
@@ -17,47 +15,48 @@ class UsuarioRepository:
     def buscarPorCorreo(self, correo: str):
         stmt = (
             select(Usuario)
-            .join(Persona, Usuario.personaId == Persona.id)
-            .where(Persona.correo == correo)
+            .join(Empleado, Usuario.personaId == Empleado.id)
+            .where(Empleado.correoLaboral == correo)
+            .limit(1)
         )
 
         result = self.db.execute(stmt)
-        usuario = result.scalar_one_or_none()
+        usuario = result.scalars().first()
         if usuario:
             return usuario
 
         stmt = (
             select(Usuario)
-            .join(Empleado, Usuario.personaId == Empleado.id)
-            .where(Empleado.correoLaboral == correo)
+            .join(Cliente, Usuario.personaId == Cliente.id)
+            .where(Cliente.correo == correo)
+            .limit(1)
         )
 
         result = self.db.execute(stmt)
-        return result.scalar_one_or_none()
+        usuario = result.scalars().first()
+        if usuario:
+            return usuario
+
+        stmt = (
+            select(Usuario)
+            .join(Persona, Usuario.personaId == Persona.id)
+            .where(Persona.correo == correo)
+            .limit(1)
+        )
+
+        result = self.db.execute(stmt)
+        return result.scalars().first()
 
     def crear(self, usuario: Usuario) -> Usuario:
         self.db.add(usuario)
         self.db.commit()
         self.db.refresh(usuario)
         return usuario
-    
+
     def buscarPorId(self, id: int) -> Usuario:
         stmt = select(Usuario).where(Usuario.id == id)
         result = self.db.execute(stmt)
         return result.scalar_one_or_none()
-    
-    def buscarPorCorreoLogin(self, correo: str) -> Usuario | None:
-        EmpleadoAlias = aliased(Empleado)
-        stmtEmpleado = (select(Usuario).join(Persona, Usuario.personaId == Persona.id)
-            .outerjoin(EmpleadoAlias, EmpleadoAlias.id == Persona.id)
-            .where(or_(Persona.correo == correo, EmpleadoAlias.correoLaboral == correo)))
-        usuarioEmpleado = (self.db.execute(stmtEmpleado)).scalar_one_or_none()
 
-        if usuarioEmpleado:
-            return usuarioEmpleado
-        
-        stmtPersona = (select(Usuario).join(Persona,Usuario.personaId == Persona.id)
-            .outerjoin(EmpleadoAlias,EmpleadoAlias.id == Persona.id).where(Persona.correo == correo, EmpleadoAlias.id.is_(None)))
-        result = self.db.execute(stmtPersona)
-        return result.scalar_one_or_none()
-    
+    def buscarPorCorreoLogin(self, correo: str) -> Usuario | None:
+        return self.buscarPorCorreo(correo)

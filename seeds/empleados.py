@@ -15,15 +15,19 @@ sys.path.insert(
 )
 
 from sqlalchemy import select
-from app.database import SessionLocal
-from app.infrastructure.models.usuario import (Usuario)
-from app.infrastructure.models.empleado import (Empleado)
-from app.infrastructure.models.contrato import (Contrato)
-from app.infrastructure.models.rol import (Rol)
-from app.infrastructure.models.multiplex import (Multiplex)
-from app.infrastructure.models.cargoEnum import (CargoEnum)
 
-from app.domain.services.auth_service import (AuthService)
+from app.database import SessionLocal
+
+from app.infrastructure.models.usuario import Usuario
+from app.infrastructure.models.cliente import Cliente
+from app.infrastructure.models.empleado import Empleado
+from app.infrastructure.models.contrato import Contrato
+from app.infrastructure.models.rol import Rol
+from app.infrastructure.models.multiplex import Multiplex
+from app.infrastructure.models.cargoEnum import CargoEnum
+
+from app.domain.services.auth_service import AuthService
+
 
 EMPLEADOS = [
     {
@@ -64,6 +68,7 @@ EMPLEADOS = [
     }
 ]
 
+
 def seedRoles(db):
     """
     Crea roles básicos.
@@ -77,23 +82,39 @@ def seedRoles(db):
     ]
 
     for roleName in roles:
-        stmt = select(Rol).where(Rol.nombre == roleName)
-        existing = db.execute(stmt).scalar_one_or_none()
+
+        stmt = select(Rol).where(
+            Rol.nombre == roleName
+        )
+
+        existing = db.execute(
+            stmt
+        ).scalar_one_or_none()
 
         if not existing:
             db.add(Rol(nombre=roleName))
+
     db.commit()
 
+
 def getRoleName(cargo: CargoEnum):
+
     if cargo == CargoEnum.director:
         return "ADMIN_MULTIPLEX"
+
     return "CAJERO"
 
+
 def run():
+
     print("Iniciando seed de empleados...")
+
     db = SessionLocal()
+
     authService = AuthService()
+
     try:
+
         # ======================================
         # CREAR ROLES
         # ======================================
@@ -105,23 +126,83 @@ def run():
         # ======================================
 
         for data in EMPLEADOS:
-            existing = db.execute(select(Empleado).where(Empleado.correoLaboral ==data["correoLaboral"])).scalar_one_or_none()
+
+            existing = db.execute(
+                select(Empleado).where(
+                    Empleado.correoLaboral == data["correoLaboral"]
+                )
+            ).scalar_one_or_none()
 
             if existing:
-                print(f"✓ Empleado ya existe: "
-                    f"{data['correoLaboral']}")
+
+                print(
+                    f"✓ Empleado ya existe: "
+                    f"{data['correoLaboral']}"
+                )
+
                 continue
 
-            multiplex = db.execute(select(Multiplex).where(Multiplex.codigo ==data["multiplexCodigo"])).scalar_one_or_none()
+            multiplex = db.execute(
+                select(Multiplex).where(
+                    Multiplex.codigo == data["multiplexCodigo"]
+                )
+            ).scalar_one_or_none()
 
             if not multiplex:
-                print(f"✗ Multiplex no encontrado: "
-                    f"{data['multiplexCodigo']}")
+
+                print(
+                    f"✗ Multiplex no encontrado: "
+                    f"{data['multiplexCodigo']}"
+                )
+
                 continue
 
             roleName = getRoleName(data["cargo"])
 
-            rol = db.execute(select(Rol).where(Rol.nombre == roleName)).scalar_one()
+            rol = db.execute(
+                select(Rol).where(
+                    Rol.nombre == roleName
+                )
+            ).scalar_one()
+
+            rolCliente = db.execute(
+                select(Rol).where(
+                    Rol.nombre == "CLIENTE"
+                )
+            ).scalar_one()
+
+            # ======================================
+            # CREAR CLIENTE
+            # ======================================
+
+            cliente = Cliente(
+                nombres=data["nombres"],
+                apellidos=data["apellidos"],
+                correo=data["correo"],
+                telefono=data["telefono"],
+                activo=True,
+                usuarioId=None
+            )
+
+            db.add(cliente)
+            db.flush()
+
+            # ======================================
+            # CREAR USUARIO CLIENTE
+            # ======================================
+
+            usuarioCliente = Usuario(
+                passwordHash=authService.hashPassword(
+                    data["password"]
+                ),
+                personaId=cliente.id,
+                rolId=rolCliente.id
+            )
+
+            db.add(usuarioCliente)
+            db.flush()
+
+            cliente.usuarioId = usuarioCliente.id
 
             # ======================================
             # CREAR EMPLEADO
@@ -130,26 +211,28 @@ def run():
             empleado = Empleado(
                 nombres=data["nombres"],
                 apellidos=data["apellidos"],
-                correo=data["correo"],
+                correo=data["correoLaboral"],
                 telefono=data["telefono"],
                 activo=True,
-                codigoEmpleado=data[
-                    "codigoEmpleado"],
-                correoLaboral=data[
-                    "correoLaboral"],
-                # temporal hasta crear usuario
-                usuarioId=1)
+                codigoEmpleado=data["codigoEmpleado"],
+                correoLaboral=data["correoLaboral"],
+                usuarioId=1
+            )
+
             db.add(empleado)
             db.flush()
 
             # ======================================
-            # CREAR USUARIO
+            # CREAR USUARIO EMPLEADO
             # ======================================
 
             usuario = Usuario(
-                passwordHash=authService.hashPassword(data["password"]),
+                passwordHash=authService.hashPassword(
+                    data["password"]
+                ),
                 personaId=empleado.id,
-                rolId=rol.id)
+                rolId=rol.id
+            )
 
             db.add(usuario)
             db.flush()
@@ -159,6 +242,7 @@ def run():
             # ======================================
 
             empleado.usuarioId = usuario.id
+
             # ======================================
             # CREAR CONTRATO
             # ======================================
@@ -170,25 +254,35 @@ def run():
                 salario=data["salario"],
                 fechaInicio=date.today(),
                 activo=True
-)
+            )
+
             db.add(contrato)
+
             # ======================================
             # COMMIT FINAL
             # ======================================
 
             db.commit()
-            print(f"✓ Empleado creado: "
+
+            print(
+                f"✓ Empleado creado: "
                 f"{empleado.nombres} "
-                f"{empleado.apellidos}")
+                f"{empleado.apellidos}"
+            )
 
         print("✓ Seed empleados completado.")
 
     except Exception as e:
+
         db.rollback()
+
         print(f"✗ Error seed empleados: {e}")
+
         raise
+
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     run()
