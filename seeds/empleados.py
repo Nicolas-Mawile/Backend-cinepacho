@@ -17,6 +17,7 @@ sys.path.insert(
 from sqlalchemy import select
 from app.database import SessionLocal
 from app.infrastructure.models.usuario import (Usuario)
+from app.infrastructure.models.cliente import (Cliente)
 from app.infrastructure.models.empleado import (Empleado)
 from app.infrastructure.models.contrato import (Contrato)
 from app.infrastructure.models.rol import (Rol)
@@ -123,6 +124,32 @@ def run():
 
             rol = db.execute(select(Rol).where(Rol.nombre == roleName)).scalar_one()
 
+            rolCliente = db.execute(select(Rol).where(Rol.nombre == "CLIENTE")).scalar_one()
+
+            # ======================================
+            # CREAR CLIENTE Y USUARIO CLIENTE
+            # ======================================
+
+            cliente = Cliente(
+                nombres=data["nombres"],
+                apellidos=data["apellidos"],
+                correo=data["correo"],
+                telefono=data["telefono"],
+                activo=True,
+                usuarioId=None)
+            db.add(cliente)
+            db.flush()
+
+            usuarioCliente = Usuario(
+                passwordHash=authService.hashPassword(data["password"]),
+                personaId=cliente.id,
+                rolId=rolCliente.id)
+
+            db.add(usuarioCliente)
+            db.flush()
+
+            cliente.usuarioId = usuarioCliente.id
+
             # ======================================
             # CREAR EMPLEADO
             # ======================================
@@ -130,7 +157,7 @@ def run():
             empleado = Empleado(
                 nombres=data["nombres"],
                 apellidos=data["apellidos"],
-                correo=data["correo"],
+                correo=data["correoLaboral"],
                 telefono=data["telefono"],
                 activo=True,
                 codigoEmpleado=data[

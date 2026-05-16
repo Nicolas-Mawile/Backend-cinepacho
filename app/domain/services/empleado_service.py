@@ -2,6 +2,7 @@
 from datetime import date
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from app.infrastructure.models.cliente import Cliente
 from app.infrastructure.models.empleado import Empleado
 from app.infrastructure.models.multiplex import Multiplex
 from app.infrastructure.models.usuario import Usuario
@@ -10,6 +11,7 @@ from app.infrastructure.models.contrato import Contrato
 from app.infrastructure.models.cargoEnum import CargoEnum
 from app.domain.constants.roles import RoleEnum
 from app.infrastructure.repositories.empleado_repository import (EmpleadoRepository)
+from app.infrastructure.repositories.usuarioRepository import UsuarioRepository
 from app.domain.services.auth_service import AuthService
 
 
@@ -44,12 +46,17 @@ class EmpleadoService:
         return rol
 
     def crearEmpleado(self, repo: EmpleadoRepository, datos: dict):
+        usuarioRepo = UsuarioRepository(self.db)
+
         # ======================================
         # VALIDAR EMPLEADO EXISTENTE
         # ======================================
         empleadoExistente = repo.buscarPorCorreo(datos.get("correo"))
         if empleadoExistente:
             raise ValueError("Empleado ya existe")
+
+        if usuarioRepo.buscarPorCorreo(datos.get("correo")):
+            raise ValueError("El correo del cliente ya está registrado")
 
         # ======================================
         # BUSCAR MULTIPLEX
@@ -74,22 +81,46 @@ class EmpleadoService:
         # ======================================
         correoLaboral = self.generarCorreoLaboral(datos.get("nombres"), datos.get("apellidos"), repo)
 
+        if usuarioRepo.buscarPorCorreo(correoLaboral):
+            raise ValueError("El correo laboral ya está registrado")
+
         # ======================================
         # OBTENER ROL
         # ======================================
-        rol = self.obtenerRolSegunCargo(datos.get("cargo"))
+        rolEmpleado = self.obtenerRolSegunCargo(datos.get("cargo"))
+        rolCliente = self.obtenerRolCliente()
+
+        passwordHash = self.authService.hashPassword(datos.get("password"))
 
         # ======================================
-        # CREAR USUARIO PRIMERO
+        # CREAR CLIENTE Y USUARIO DE CLIENTE
         # ======================================
-        usuario = Usuario(passwordHash=self.authService.hashPassword(datos.get("password")), rolId=rol.id)
+        cliente = Cliente(
+            nombres=datos.get("nombres"),
+            apellidos=datos.get("apellidos"),
+            correo=datos.get("correo"),
+            telefono=datos.get("telefono"),
+        )
+        self.db.add(cliente)
+        self.db.flush()
+
+        usuarioCliente = Usuario(passwordHash=passwordHash, rolId=rolCliente.id, personaId=cliente.id)
+        self.db.add(usuarioCliente)
+        self.db.flush()
+
+        cliente.usuarioId = usuarioCliente.id
+
+        # ======================================
+        # CREAR USUARIO DE EMPLEADO
+        # ======================================
+        usuario = Usuario(passwordHash=passwordHash, rolId=rolEmpleado.id)
         self.db.add(usuario)
         self.db.flush()
 
         # ======================================
         # CREAR EMPLEADO
         # ======================================
-        empleado = Empleado(usuarioId=usuario.id, nombres=datos.get("nombres"), apellidos=datos.get("apellidos"), correo=datos.get("correo"),
+        empleado = Empleado(usuarioId=usuario.id, nombres=datos.get("nombres"), apellidos=datos.get("apellidos"), correo=correoLaboral,
                             telefono=datos.get("telefono"), codigoEmpleado=codigoEmpleado, correoLaboral=correoLaboral)
         self.db.add(empleado)
         self.db.flush()
@@ -110,6 +141,9 @@ class EmpleadoService:
         # COMMIT
         # ======================================
         self.db.commit()
+        self.db.refresh(cliente)
+        self.db.refresh(usuarioCliente)
+        self.db.refresh(usuario)
         self.db.refresh(empleado)
 
         # ======================================
@@ -128,6 +162,11 @@ class EmpleadoService:
 
             "credenciales": {
                 "correo": correoLaboral,
+                "password": datos.get("password")
+            },
+
+            "credencialesCliente": {
+                "correo": datos.get("correo"),
                 "password": datos.get("password")
             }
         }
@@ -153,4 +192,12 @@ class EmpleadoService:
 
         if not rol:
             raise ValueError(f"Rol {roleName} no existe")
+        return rol
+
+    def obtenerRolCliente(self) -> Rol:
+        stmt = select(Rol).where(Rol.nombre == RoleEnum.CLIENTE.value)
+        rol = self.db.execute(stmt).scalar_one_or_none()
+
+        if not rol:
+            raise ValueError(f"Rol {RoleEnum.CLIENTE.value} no existe")
         return rol
