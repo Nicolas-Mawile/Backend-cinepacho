@@ -1,24 +1,15 @@
 from sqlalchemy import Column, Boolean, Integer, String
 
-from .base import Base
-
-class Persona(Base):
+class Persona:
     """
-    Entidad base que representa información humana
-    compartida entre clientes y empleados.
+    Clase abstracta reutilizable.
+    NO genera tabla en BD.
     """
     __tablename__ = "personas"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True)
     nombres = Column(String, nullable=False)
     apellidos = Column(String, nullable=False)
     correo = Column(String, nullable=True)
     telefono = Column(String, nullable=True)
     activo = Column(Boolean, default=True)
-
-    tipo = Column(String(50))
-
-    __mapper_args__ = {
-        'polymorphic_identity': 'persona',
-        'polymorphic_on': tipo
-    }

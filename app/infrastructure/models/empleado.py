@@ -1,30 +1,25 @@
 """Empleado model."""
 
-from sqlalchemy import Column, ForeignKey, Integer, String, Enum, Date, Numeric, Boolean
+from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
-from app.infrastructure.models.cargoEnum import CargoEnum
 from app.infrastructure.models.persona import Persona
+from app.infrastructure.models.base import Base
 
-class Empleado(Persona):
+class Empleado(Base, Persona):
     """
     Representa empleados internos de CinePacho.
     """
     __tablename__ = "empleados"
-    id = Column(Integer, ForeignKey('personas.id'), primary_key=True)
-    usuarioId = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     codigoEmpleado = Column(String, unique=True, nullable=False)
     correoLaboral = Column(String, unique=True, nullable=False)
 
-    usuario = relationship("Usuario", back_populates="empleado", foreign_keys=[usuarioId])
-    contratos = relationship("Contrato", back_populates="empleado")
-    historial_cargos = relationship(
-        "HistorialCargo",
-        back_populates="empleado"
-    )
+    clienteId = Column(Integer, ForeignKey("clientes.id"), nullable=False, unique =True)
+    cliente = relationship("Cliente", back_populates="empleado")
 
-    __mapper_args__ = {
-        "polymorphic_identity": "empleado"
-    }
+    usuario = relationship("Usuario", back_populates="empleado", uselist=False)
+    contratos = relationship("Contrato", back_populates="empleado")
+    historial_cargos = relationship("HistorialCargo", back_populates="empleado")
 
     @property
     def contratoActivo(self):

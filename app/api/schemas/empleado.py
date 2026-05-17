@@ -35,7 +35,7 @@ class EmpleadoResponse(BaseModel):
     telefono: str
     correoLaboral: EmailStr
     cargoActual: Optional[CargoEnum]
-    acivo: bool
+    activo: bool
 
     model_config = {
         "from_attributes": True

@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
     
     # Ejecutar seeds (con try-except para evitar fallos en tests)
     try:
-        from seeds.multiplex import run as seed_multiplex
+        from seeds.multiplex_seed import run as seed_multiplex
         from seeds.configuracion import run as seed_config
         seed_multiplex()
         seed_config()
