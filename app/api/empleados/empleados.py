@@ -37,6 +37,7 @@ def listar_empleados(pagina: int = Query(1, ge=1), limite: int = Query(10, ge=1,
             "id": empleado.id,
             "nombres": empleado.nombres,
             "apellidos": empleado.apellidos,
+            "codigoEmpleado" : empleado.codigoEmpleado,
             "cargoActual": empleado.cargoActual,
             "multiplexActual": empleado.multiplexActual,
             "activo": empleado.activo

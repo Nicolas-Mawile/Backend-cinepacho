@@ -66,6 +66,7 @@ class EmpleadoListElement(BaseModel):
     id: int
     nombres: str
     apellidos: str
+    codigoEmpleado : str
     cargoActual: Optional[CargoEnum]
     multiplexActual: str | None = None
     activo: bool
