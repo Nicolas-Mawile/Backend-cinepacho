@@ -1,5 +1,5 @@
 from datetime import datetime
-from select import select
+from sqlalchemy import select
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -52,7 +52,8 @@ def registro(datos: RegistroRequest, db: Session = Depends(get_db)):
             "correo": cliente.correo,
             "nombres": cliente.nombres,
             "apellidos": cliente.apellidos,
-            "rol": usuario.rol.nombre
+            "rol": usuario.rol.nombre,
+            "permisos": [permiso.nombre for permiso in usuario.rol.permisos]
         }
     }
 
