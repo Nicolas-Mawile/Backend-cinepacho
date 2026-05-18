@@ -102,7 +102,8 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
             "correo": correo,
             "nombres": usuario.nombres,
             "apellidos": usuario.apellidos,
-            "rol": usuario.rol.nombre
+            "rol": usuario.rol.nombre,
+            "permisos": [permiso.nombre for permiso in usuario.rol.permisos]
         }
     }
 
