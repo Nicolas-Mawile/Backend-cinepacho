@@ -7,7 +7,7 @@ from app.database import get_db
 from app.infrastructure.models.multiplex_cartelera import MultiplexCartelera
 from app.infrastructure.models.pelicula import Pelicula
 from app.infrastructure.models.multiplex import Multiplex
-from app.api.dependencies import get_current_admin_mx
+from app.api.dependencies import requireRole
 
 router = APIRouter(tags=["cartelera"])
 
@@ -32,7 +32,7 @@ def agregar_a_cartelera(
     multiplex_id: int,
     data: CarteleraAdd,
     db: Session = Depends(get_db),
-    _=Depends(get_current_admin_mx)
+    _=Depends(requireRole(["ADMIN-MX"]))
 ):
     multiplex = db.get(Multiplex, multiplex_id)
     if not multiplex:
@@ -67,7 +67,7 @@ def remover_de_cartelera(
     multiplex_id: int,
     pelicula_id: int,
     db: Session = Depends(get_db),
-    _=Depends(get_current_admin_mx)
+    _=Depends(requireRole(["ADMIN-MX"]))
 ):
     entrada = db.execute(
         select(MultiplexCartelera).where(

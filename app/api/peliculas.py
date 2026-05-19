@@ -6,7 +6,7 @@ from sqlalchemy import select
 from typing import Optional
 from app.database import get_db
 from app.infrastructure.models.pelicula import Pelicula
-from app.api.dependencies import get_current_admin_general
+from app.api.dependencies import requireRole
 
 router = APIRouter(prefix="/peliculas", tags=["peliculas"])
 
@@ -41,7 +41,7 @@ def obtener_pelicula(id: int, db: Session = Depends(get_db)):
 
 
 @router.post("", status_code=201)
-def crear_pelicula(data: PeliculaCreate, db: Session = Depends(get_db), _=Depends(get_current_admin_general)):
+def crear_pelicula(data: PeliculaCreate, db: Session = Depends(get_db), _=Depends(requireRole(["ADMIN-GENERAL"]))):
     pelicula = Pelicula(**data.model_dump(), estaActiva=True)
     db.add(pelicula)
     db.commit()
@@ -50,7 +50,7 @@ def crear_pelicula(data: PeliculaCreate, db: Session = Depends(get_db), _=Depend
 
 
 @router.put("/{id}")
-def actualizar_pelicula(id: int, data: PeliculaUpdate, db: Session = Depends(get_db), _=Depends(get_current_admin_general)):
+def actualizar_pelicula(id: int, data: PeliculaUpdate, db: Session = Depends(get_db), _=Depends(requireRole(["ADMIN-GENERAL"]))):
     pelicula = db.get(Pelicula, id)
     if not pelicula:
         raise HTTPException(status_code=404, detail="Pelicula no encontrada")
@@ -62,7 +62,7 @@ def actualizar_pelicula(id: int, data: PeliculaUpdate, db: Session = Depends(get
 
 
 @router.patch("/{id}/desactivar")
-def desactivar_pelicula(id: int, db: Session = Depends(get_db), _=Depends(get_current_admin_general)):
+def desactivar_pelicula(id: int, db: Session = Depends(get_db), _=Depends(requireRole(["ADMIN-GENERAL"]))):
     pelicula = db.get(Pelicula, id)
     if not pelicula:
         raise HTTPException(status_code=404, detail="Pelicula no encontrada")

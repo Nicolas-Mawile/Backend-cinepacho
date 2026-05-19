@@ -8,7 +8,7 @@ from app.infrastructure.models.funcion import Funcion
 from app.infrastructure.models.pelicula import Pelicula
 from app.infrastructure.models.sala import Sala
 from app.infrastructure.repositories.funcion_repository import FuncionRepository
-from app.api.dependencies import get_current_admin_mx
+from app.api.dependencies import requireRole
 
 router = APIRouter(tags=["funciones"])
 
@@ -20,7 +20,7 @@ class FuncionCreate(BaseModel):
 
 
 @router.post("/funciones", status_code=201)
-def crear_funcion(data: FuncionCreate, db: Session = Depends(get_db), _=Depends(get_current_admin_mx)):
+def crear_funcion(data: FuncionCreate, db: Session = Depends(get_db), _=Depends(requireRole(["ADMIN-MX"]))):
     repo = FuncionRepository(db)
     sala = db.get(Sala, data.salaId)
     if not sala or not sala.estaActiva:
@@ -47,7 +47,7 @@ def funciones_por_sala(id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/funciones/{id}")
-def eliminar_funcion(id: int, db: Session = Depends(get_db), _=Depends(get_current_admin_mx)):
+def eliminar_funcion(id: int, db: Session = Depends(get_db), _=Depends(requireRole(["ADMIN-MX"]))):
     repo = FuncionRepository(db)
     funcion = repo.get(id)
     if not funcion:

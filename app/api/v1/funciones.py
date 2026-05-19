@@ -9,7 +9,7 @@ from app.infrastructure.models.funcion import Funcion
 from app.infrastructure.models.pelicula import Pelicula
 from app.infrastructure.models.sala import Sala
 from app.infrastructure.repositories.funcion_repository import FuncionRepository
-from app.api.dependencies import get_current_admin_mx, get_current_admin_general
+from app.api.dependencies import requireRole
 
 router = APIRouter(tags=["funciones"])
 
@@ -24,7 +24,7 @@ class FuncionCreate(BaseModel):
 def crear_funcion(
     data: FuncionCreate,
     db: Session = Depends(get_db),
-    _=Depends(get_current_admin_mx)
+    _=Depends(requireRole(["ADMIN-MX"]))
 ):
     repo = FuncionRepository(db)
 
@@ -76,7 +76,7 @@ def funciones_por_sala(id: int, db: Session = Depends(get_db)):
 def eliminar_funcion(
     id: int,
     db: Session = Depends(get_db),
-    _=Depends(get_current_admin_mx)
+    _=Depends(requireRole(["ADMIN-MX"]))
 ):
     repo = FuncionRepository(db)
     funcion = repo.get(id)
