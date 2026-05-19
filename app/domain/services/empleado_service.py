@@ -173,6 +173,9 @@ class EmpleadoService:
         # COMMIT
         # ======================================
         self.db.commit()
+        self.db.refresh(cliente)
+        self.db.refresh(usuarioCliente)
+        self.db.refresh(usuario)
         self.db.refresh(empleado)
 
         # ======================================
