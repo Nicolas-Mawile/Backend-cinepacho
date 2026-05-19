@@ -1,84 +1,65 @@
 from datetime import datetime, timezone, timedelta
+from sqlalchemy import select
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-
 from app.database import get_db
-from app.api.schemas.auth import RegistroRequest, LoginRequest
-from app.infrastructure.models.persona import Persona
+from app.api.schemas.auth import AuthResponse, RegistroRequest, LoginRequest
 from app.infrastructure.models.usuario import Usuario
 from app.infrastructure.models.rol import Rol
 from app.infrastructure.repositories.usuarioRepository import UsuarioRepository
 from app.domain.services.auth_service import AuthService
 from app.api.dependencies import get_current_user
 from app.infrastructure.models.cliente import Cliente
-from app.infrastructure.repositories.cliente_repository import ClienteRepository
 
-router = APIRouter(
-    prefix="/auth",
-    tags=["Auth"]
-)
-
-def _buildUsuarioResponse(usuario: Usuario) -> dict:
-    """Construye la respuesta JSON para un usuario autenticado."""
-    permisos = [permiso.nombre for permiso in usuario.rol.permisos]
-    return {
-        "id": usuario.id,
-        "nombres": usuario.persona.nombres,
-        "apellidos": usuario.persona.apellidos,
-        "correo": usuario.persona.correo,
-        "rol": usuario.rol.nombre,
-        "permisos": permisos
-    }
+router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/registro")
 def registro(datos: RegistroRequest, db: Session = Depends(get_db)):
-    """Registra un nuevo usuario y genera un token de acceso. ES PARA REGISTRAR CLIENTES, LOS EMPLEADOS LOS REGISTRAN LOS ADMIN."""
+    """Registra un nuevo usuario y genera un token de acceso. 
+        ES PARA REGISTRAR CLIENTES, LOS EMPLEADOS LOS REGISTRAN LOS ADMIN."""
     usuarioRepo = UsuarioRepository(db)
     authService = AuthService()
 
     existeUsuario = usuarioRepo.buscarPorCorreo(datos.correo)
     if existeUsuario:
         raise HTTPException(status_code=409, detail="Correo ya registrado")
-
-
-    rolCliente = db.query(Rol).filter(Rol.nombre == "CLIENTE").first()
-    if not rolCliente:
-        raise HTTPException(status_code=500, detail="Rol CLIENTE no existe")
     
-    cliente = Cliente(
-        nombres = datos.nombres,
-        apellidos = datos.apellidos,
-        correo = datos.correo,
-        telefono = datos.telefono
-    )
+    cliente = Cliente(nombres = datos.nombres, apellidos = datos.apellidos, 
+                      correo = datos.correo, telefono = datos.telefono)
     db.add(cliente)
     db.flush()
 
+    stmtRolCliente = select(Rol).where(Rol.nombre == "CLIENTE")
+    rolCliente = db.execute(stmtRolCliente).scalars().first()
+    if not rolCliente:
+        raise HTTPException(status_code=500, detail="Rol CLIENTE no existe")
+
     usuario = Usuario(
+        clienteId=cliente.id,
         passwordHash=authService.hashPassword(datos.password),
-        personaId=cliente.id,
         rolId=rolCliente.id)
 
     db.add(usuario)
-    db.flush()
-
-    cliente.usuarioId = usuario.id
     db.commit()
-
-    db.refresh(cliente)
     db.refresh(usuario)
-
     
-    token = authService.createAccessToken(data={"sub": str(usuario.id), "role": usuario.rol.nombre})
-    refreshToken = (authService.createRefreshToken(data={"sub": str(usuario.id)}))
-    return {"access_token": token,
-            "token_type": "bearer",
-            "refresh_token": refreshToken,
-            "usuario": _buildUsuarioResponse(usuario)}
+    token = authService.createAccessToken(data={"sub": str(usuario.id)})
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "usuario": {
+            "id": usuario.id,
+            "correo": cliente.correo,
+            "nombres": cliente.nombres,
+            "apellidos": cliente.apellidos,
+            "rol": usuario.rol.nombre,
+            "permisos": [permiso.nombre for permiso in usuario.rol.permisos]
+        }
+    }
 
 
-@router.post("/login")
+@router.post("/login", response_model=AuthResponse)
 def login(data: LoginRequest, db: Session = Depends(get_db)):
     """Valida credenciales y devuelve un token JWT de acceso."""
     usuarioRepo = UsuarioRepository(db)
@@ -109,25 +90,51 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     usuario.bloqueadoHasta = None
     db.commit()
 
-    accessToken = authService.createAccessToken(data={"sub": str(usuario.id), "role": usuario.rol.nombre})
-    refreshToken = authService.createRefreshToken(data={"sub": str(usuario.id)})
-    
+    accessToken = authService.createAccessToken(data={"sub": str(usuario.id)})
+    if usuario.cliente:
+        correo = usuario.cliente.correo
+    else:
+        correo = usuario.empleado.correoLaboral
+
     return {
         "access_token": accessToken,
         "token_type": "bearer",
-        "refresh_token": refreshToken,
-        "usuario": _buildUsuarioResponse(usuario)
+        "usuario": {
+            "id": usuario.id,
+            "correo": correo,
+            "nombres": usuario.nombres,
+            "apellidos": usuario.apellidos,
+            "rol": usuario.rol.nombre,
+            "permisos": [permiso.nombre for permiso in usuario.rol.permisos],
+            "empleado_id": usuario.empleado.id if usuario.empleado else None
+        }
     }
 
 @router.get("/me")
 def me(user=Depends(get_current_user)):
     """Devuelve los datos del usuario autenticado."""
     permisos = [permiso.nombre for permiso in user.rol.permisos]
+    if user.cliente:
+        correo = user.cliente.correo
+    else:        
+        correo = user.empleado.correoLaboral
     return {
         "id": user.id,
-        "nombres": user.persona.nombres,
-        "apellidos": user.persona.apellidos,
-        "correo": user.persona.correo,
+        "nombres": user.nombres,
+        "apellidos": user.apellidos,
+        "correo": correo,
         "rol": user.rol.nombre,
         "permisos": permisos
     }
+
+# def _buildUsuarioResponse(usuario: Usuario) -> dict:
+#     """Construye la respuesta JSON para un usuario autenticado."""
+#     permisos = [permiso.nombre for permiso in usuario.rol.permisos]
+#     return {
+#         "id": usuario.id,
+#         "nombres": usuario.persona.nombres,
+#         "apellidos": usuario.persona.apellidos,
+#         "correo": usuario.persona.correo,
+#         "rol": usuario.rol.nombre,
+#         "permisos": permisos
+#     }

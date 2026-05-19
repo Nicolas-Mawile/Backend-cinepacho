@@ -1,13 +1,21 @@
 """Sillas API router."""
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-
+from datetime import datetime
 from app.api.dependencies import requirePermission
 from app.database import SessionLocal
 from app.infrastructure.repositories.silla_repository import SillaRepository
 from app.domain.services.sala_service import SalaService
 from app.domain.exceptions import SalaNotFoundError
 from app.infrastructure.models.usuario import Usuario
+from app.infrastructure.models.boleta import Boleta
+from app.infrastructure.models.factura import Factura
+from app.infrastructure.models.EstadoFacturaEnum import EstadoFacturaEnum
+from app.infrastructure.models.silla import Silla
+from app.infrastructure.models.detalleFactura import DetalleFactura
+from app.api.schemas.compra import DisponibilidadSillaResponse
+from app.domain.services.checkout_service import CheckoutService
+from app.api.compras.compras import get_checkout_service
 
 router = APIRouter(prefix="/api/v1", tags=["Sillas"])
 
@@ -205,3 +213,47 @@ def obtener_detalles_sillas_sala(
         }
     except SalaNotFoundError:
         raise HTTPException(status_code=404, detail="Sala no encontrada")
+
+@router.get(
+    "/funciones/{funcion_id}/sillas/disponibilidad",
+    response_model=list[DisponibilidadSillaResponse],
+    summary="Obtener disponibilidad de sillas",
+)
+def obtener_disponibilidad_sillas(
+    funcion_id: int,
+    service: CheckoutService = Depends(
+        get_checkout_service
+    ),
+    _: Usuario = Depends(
+        requirePermission(
+            "ver-detalle-funcion"
+        )
+    ),
+):
+    """
+    Retorna disponibilidad de sillas:
+    
+    - DISPONIBLE
+    - RESERVADA
+    - OCUPADA
+    """
+
+    try:
+
+        response = (
+            service.obtener_disponibilidad(
+                funcion_id
+            )
+        )
+
+        return response
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )

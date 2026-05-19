@@ -35,7 +35,7 @@ class EmpleadoResponse(BaseModel):
     telefono: str
     correoLaboral: EmailStr
     cargoActual: Optional[CargoEnum]
-    acivo: bool
+    activo: bool
 
     model_config = {
         "from_attributes": True
@@ -66,6 +66,7 @@ class EmpleadoListElement(BaseModel):
     id: int
     nombres: str
     apellidos: str
+    codigoEmpleado : str
     cargoActual: Optional[CargoEnum]
     multiplexActual: str | None = None
     activo: bool

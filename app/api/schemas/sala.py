@@ -122,6 +122,7 @@ class SalaSimpleResponse(BaseModel):
     """Schema de respuesta simple para una sala (sin sillas)."""
     id: int
     numero: int
+    activa: bool = Field(alias="estaActiva")
 
     model_config = {
         "from_attributes": True

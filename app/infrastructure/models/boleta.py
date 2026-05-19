@@ -1,10 +1,17 @@
 """Boleta model."""
-from sqlalchemy import Column, Integer, ForeignKey, Float
+from sqlalchemy import Column, Integer, ForeignKey, Float, UniqueConstraint
 from .base import Base
 from sqlalchemy.orm import relationship
 
 class Boleta(Base):
     __tablename__ = "boletas"
+    __table_args__ = (
+        UniqueConstraint(
+            "funcionId",
+            "sillaId",
+            name="uq_boleta_funcion_silla"
+        ),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)    
     funcionId = Column(Integer, ForeignKey("funciones.id"), nullable=False)

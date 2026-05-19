@@ -7,9 +7,21 @@ from app.infrastructure.models.funcion import Funcion
 from app.infrastructure.models.multiplex_cartelera import MultiplexCartelera
 
 
-class FuncionRepository(AbstractRepository[Funcion]):
+class FuncionRepository:
+
     def __init__(self, db: Session):
         self.db = db
+
+    def get_by_id(
+        self,
+        funcion_id: int
+    ):
+
+        return (
+            self.db.query(Funcion)
+            .filter(Funcion.id == funcion_id)
+            .first()
+        )
 
     def add(self, entity: Funcion) -> Funcion:
         self.db.add(entity)

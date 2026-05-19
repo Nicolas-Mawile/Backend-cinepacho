@@ -118,7 +118,6 @@ def run():
     db = SessionLocal()
     try:
         for roleName, permisosNames in ROLE_PERMISSIONS.items():
-
             rol = db.execute(select(Rol).where(Rol.nombre == roleName)).scalar_one()
             permisos = db.execute(select(Permiso).where(Permiso.nombre.in_(permisosNames))).scalars().all()
             rol.permisos = permisos

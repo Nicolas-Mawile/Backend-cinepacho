@@ -11,7 +11,8 @@ class Pago(Base):
     monto = Column(Float, nullable=False)
     estado = Column(Enum(EstadoPagoEnum), nullable=False)
     metodoPago = Column(String, nullable=False)
-    fechaPago = Column(DateTime, nullable=False)
+    fechaPago = Column(DateTime, nullable=True)
+    fechaExpiracion = Column(DateTime, nullable=False)
 
     facturaId = Column(Integer, ForeignKey("facturas.id"), nullable=False)
     factura = relationship("Factura", back_populates="pagos")
