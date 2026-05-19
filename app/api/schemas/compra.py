@@ -3,6 +3,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel
+from pydantic import EmailStr
 
 from typing import List
 
@@ -14,12 +15,26 @@ from typing import List
 class CheckoutRequest(BaseModel):
 
     funcionId: int
+
     sillaIds: List[int]
 
 
 class PagarFacturaRequest(BaseModel):
 
     metodoPago: str
+
+    correo: EmailStr
+
+
+class ConfirmarPagoRequest(BaseModel):
+
+    nombres: str
+
+    apellidos: str
+
+    correo: EmailStr
+
+    telefono: str
 
 
 # =========================================================
@@ -29,8 +44,11 @@ class PagarFacturaRequest(BaseModel):
 class DisponibilidadSillaResponse(BaseModel):
 
     sillaId: int
+
     fila: str
+
     columna: int
+
     estado: str
 
 
@@ -41,10 +59,15 @@ class DisponibilidadSillaResponse(BaseModel):
 class CheckoutResponse(BaseModel):
 
     mensaje: str
+
     facturaId: int
+
     estado: str
+
     expira: datetime
+
     subtotal: float
+
     total: float
 
 
@@ -55,10 +78,14 @@ class CheckoutResponse(BaseModel):
 class PagoResponse(BaseModel):
 
     mensaje: str
+
     facturaId: int
-    codigoTransaccion: str
-    estado: str
-    total: float
+
+    pagoId: int
+
+    estadoPago: str
+
+    expira: datetime
 
 
 # =========================================================
@@ -68,13 +95,19 @@ class PagoResponse(BaseModel):
 class ResumenDetalleResponse(BaseModel):
 
     boletaId: int
+
     funcionId: int
+
     pelicula: str
+
     sala: str
+
     fechaHora: datetime
 
     sillaId: int
+
     fila: str
+
     columna: int
 
     subtotal: float
@@ -83,15 +116,20 @@ class ResumenDetalleResponse(BaseModel):
 class ResumenCompraResponse(BaseModel):
 
     facturaId: int
+
     estado: str
 
     subtotal: float
+
     descuento: float
+
     total: float
 
     expira: datetime | None
 
-    detalles: List[ResumenDetalleResponse]
+    detalles: List[
+        ResumenDetalleResponse
+    ]
 
 
 # =========================================================
@@ -105,27 +143,38 @@ class ConfirmacionBoletaResponse(BaseModel):
     funcionId: int
 
     pelicula: str
+
     sala: str
+
     fechaHora: datetime
 
     sillaId: int
+
     fila: str
+
     columna: int
 
 
 class ConfirmacionFacturaResponse(BaseModel):
 
     id: int
+
     total: float
+
     estado: str
+
     codigoTransaccion: str
+
     fecha: datetime
 
 
 class ConfirmacionCompraResponse(BaseModel):
 
     factura: ConfirmacionFacturaResponse
-    boletas: List[ConfirmacionBoletaResponse]
+
+    boletas: List[
+        ConfirmacionBoletaResponse
+    ]
 
 
 # =========================================================
@@ -135,16 +184,21 @@ class ConfirmacionCompraResponse(BaseModel):
 class MisBoletasResponse(BaseModel):
 
     boletaId: int
+
     facturaId: int
 
     funcionId: int
 
     pelicula: str
+
     sala: str
+
     fechaHora: datetime
 
     sillaId: int
+
     fila: str
+
     columna: int
 
     fechaCompra: datetime

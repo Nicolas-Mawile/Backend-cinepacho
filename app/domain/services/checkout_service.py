@@ -1,35 +1,26 @@
 """Checkout service."""
-
 from datetime import datetime, timedelta
-
 from fastapi import HTTPException
-
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
-
+from app.config import settings
+from jose import jwt
 from app.infrastructure.models.factura import Factura
 from app.infrastructure.models.boleta import Boleta
 from app.infrastructure.models.detalleFactura import DetalleFactura
 from app.infrastructure.models.EstadoFacturaEnum import EstadoFacturaEnum
 from app.infrastructure.models.silla import Silla
-
-from app.infrastructure.repositories.factura_repository import (
-    FacturaRepository
-)
-
-from app.infrastructure.repositories.boleta_repository import (
-    BoletaRepository
-)
-
-from app.infrastructure.repositories.funcion_repository import (
-    FuncionRepository
-)
-
-from app.infrastructure.repositories.silla_repository import (
-    SillaRepository
-)
-
+from app.infrastructure.models.pago import Pago
+from app.infrastructure.models.EstadoPagoEnum import EstadoPagoEnum
+from app.infrastructure.models.cliente import Cliente
+from app.infrastructure.models.funcion import Funcion
+from app.infrastructure.repositories.pago_repository import (PagoRepository)
+from app.domain.services.email_service import (EmailService)
+from app.infrastructure.repositories.factura_repository import (FacturaRepository)
+from app.infrastructure.repositories.boleta_repository import (BoletaRepository)
+from app.infrastructure.repositories.funcion_repository import (FuncionRepository)
+from app.infrastructure.repositories.silla_repository import (SillaRepository)
 
 class CheckoutService:
     """
@@ -62,6 +53,9 @@ class CheckoutService:
         self.silla_repository = (
             SillaRepository(db)
         )
+        self.pago_repository = PagoRepository(db)
+
+        self.email_service = EmailService()
 
     # =========================================================
     # RESERVAS EXPIRADAS
@@ -218,7 +212,7 @@ class CheckoutService:
 
                 ocupada = (
                     self.boleta_repository
-                    .silla_ocupada_o_reservada(
+                    .existe_boleta_activa(
                         funcion_id,
                         silla_id
                     )
@@ -292,7 +286,7 @@ class CheckoutService:
                     sillaId=silla_id
                 )
 
-                self.boleta_repository.create(
+                self.boleta_repository.add(
                     boleta
                 )
 
@@ -361,13 +355,13 @@ class CheckoutService:
     # PAGAR
     # =========================================================
 
-    def pagar(
-        self,
-        factura_id: int,
-        cliente_id: int
-    ):
+    def pagar(self, factura_id: int, metodo_pago: str, correo: str, cliente_id: int | None = None):
 
         try:
+
+            # =====================================
+            # FACTURA
+            # =====================================
 
             factura = (
                 self.factura_repository
@@ -382,18 +376,8 @@ class CheckoutService:
                 )
 
             # =====================================
-            # VALIDAR PROPIETARIO
+            # VALIDAR ESTADO
             # =====================================
-
-            if factura.clienteId != cliente_id:
-
-                raise HTTPException(
-                    status_code=403,
-                    detail=(
-                        "No puede pagar "
-                        "esta factura"
-                    )
-                )
 
             if (
                 factura.estadoFactura
@@ -407,6 +391,10 @@ class CheckoutService:
                         "no está reservada"
                     )
                 )
+
+            # =====================================
+            # VALIDAR EXPIRACIÓN
+            # =====================================
 
             if (
                 factura.fechaExpiracionReserva
@@ -424,30 +412,95 @@ class CheckoutService:
                     detail="La reserva expiró"
                 )
 
-            factura.estadoFactura = (
-                EstadoFacturaEnum.PAGADA
+            # =====================================
+            # VALIDAR PROPIETARIO
+            # SOLO SI HAY CLIENTE LOGIN
+            # =====================================
+
+            if (
+                cliente_id is not None
+                and
+                factura.clienteId is not None
+                and
+                factura.clienteId != cliente_id
+            ):
+
+                raise HTTPException(
+                    status_code=403,
+                    detail=(
+                        "No puede pagar "
+                        "esta factura"
+                    )
+                )
+
+            # =====================================
+            # CREAR PAGO PENDIENTE
+            # =====================================
+
+            pago = Pago(
+                monto=factura.total,
+                estado=EstadoPagoEnum.PENDIENTE,
+                metodoPago=metodo_pago,
+                fechaPago=None,
+                fechaExpiracion=(
+                    factura.fechaExpiracionReserva
+                ),
+                facturaId=factura.id
             )
 
-            factura.codigoTransaccion = (
-                f"TX-{factura.id}-"
-                f"{int(datetime.utcnow().timestamp())}"
+            self.pago_repository.add(
+                pago
+            )
+
+            # =====================================
+            # GENERAR TOKEN JWT
+            # =====================================
+
+            token = jwt.encode(
+                {
+                    "pagoId": pago.id,
+                    "exp": (
+                        datetime.utcnow()
+                        + timedelta(minutes=10)
+                    )
+                },
+                settings.secret_key,
+                algorithm="HS256"
+            )
+
+            # =====================================
+            # LINK CONFIRMACIÓN
+            # =====================================
+
+            link_confirmacion = (
+                f"{settings.backend_url}"
+                f"/confirmar-pago"
+                f"?token={token}"
+            )
+            print("\n========== LINK CONFIRMACIÓN ==========")
+            print(link_confirmacion)
+            print("=======================================\n")
+
+            # =====================================
+            # ENVIAR EMAIL
+            # =====================================
+
+            self.email_service.enviar_confirmacion_pago(
+                destinatario=correo,
+                link_confirmacion=link_confirmacion
             )
 
             self.db.commit()
 
-            self.db.refresh(factura)
-
             return {
                 "mensaje": (
-                    "Compra realizada "
-                    "exitosamente"
+                    "Correo de confirmación "
+                    "enviado"
                 ),
                 "facturaId": factura.id,
-                "codigoTransaccion": (
-                    factura.codigoTransaccion
-                ),
-                "estado": factura.estadoFactura,
-                "total": factura.total
+                "pagoId": pago.id,
+                "estadoPago": pago.estado,
+                "expira": pago.fechaExpiracion
             }
 
         except HTTPException:
@@ -485,12 +538,12 @@ class CheckoutService:
                 joinedload(Factura.detalles)
                 .joinedload(DetalleFactura.boleta)
                 .joinedload(Boleta.funcion)
-                .joinedload("pelicula"),
+                .joinedload(Funcion.pelicula),
 
                 joinedload(Factura.detalles)
                 .joinedload(DetalleFactura.boleta)
                 .joinedload(Boleta.funcion)
-                .joinedload("sala")
+                .joinedload(Funcion.sala)
 
             )
             .filter(Factura.id == factura_id)
@@ -533,8 +586,7 @@ class CheckoutService:
                     ),
 
                     "sala": (
-                        boleta.funcion
-                        .sala.nombre
+                        f"Sala {boleta.funcion.sala.numero}"
                     ),
 
                     "fechaHora": (
@@ -544,7 +596,7 @@ class CheckoutService:
 
                     "sillaId": boleta.silla.id,
 
-                    "fila": boleta.silla.fila,
+                    "fila": str(boleta.silla.fila),
                     "columna": boleta.silla.columna,
 
                     "subtotal": detalle.subTotal
@@ -585,12 +637,12 @@ class CheckoutService:
                 joinedload(Factura.detalles)
                 .joinedload(DetalleFactura.boleta)
                 .joinedload(Boleta.funcion)
-                .joinedload("pelicula"),
+                .joinedload(Funcion.pelicula),
 
                 joinedload(Factura.detalles)
                 .joinedload(DetalleFactura.boleta)
                 .joinedload(Boleta.funcion)
-                .joinedload("sala")
+                .joinedload(Funcion.sala)
 
             )
             .filter(Factura.id == factura_id)
@@ -646,8 +698,7 @@ class CheckoutService:
                     ),
 
                     "sala": (
-                        boleta.funcion
-                        .sala.nombre
+                        f"Sala {boleta.funcion.sala.numero}"
                     ),
 
                     "fechaHora": (
@@ -657,7 +708,7 @@ class CheckoutService:
 
                     "sillaId": boleta.silla.id,
 
-                    "fila": boleta.silla.fila,
+                    "fila": str(boleta.silla.fila),
                     "columna": boleta.silla.columna
                 })
 
@@ -694,12 +745,12 @@ class CheckoutService:
                 joinedload(Factura.detalles)
                 .joinedload(DetalleFactura.boleta)
                 .joinedload(Boleta.funcion)
-                .joinedload("pelicula"),
+                .joinedload(Funcion.pelicula),
 
                 joinedload(Factura.detalles)
                 .joinedload(DetalleFactura.boleta)
                 .joinedload(Boleta.funcion)
-                .joinedload("sala")
+                .joinedload(Funcion.sala)
 
             )
             .filter(
@@ -732,8 +783,7 @@ class CheckoutService:
                         ),
 
                         "sala": (
-                            boleta.funcion
-                            .sala.nombre
+                            f"Sala {boleta.funcion.sala.numero}"
                         ),
 
                         "fechaHora": (
@@ -743,7 +793,7 @@ class CheckoutService:
 
                         "sillaId": boleta.silla.id,
 
-                        "fila": boleta.silla.fila,
+                        "fila": str(boleta.silla.fila),
                         "columna": boleta.silla.columna,
 
                         "fechaCompra": (
@@ -856,3 +906,202 @@ class CheckoutService:
             })
 
         return response
+    
+
+    def confirmar_pago(
+    self,
+    token: str,
+    nombres: str,
+    apellidos: str,
+    correo: str,
+    telefono: str
+):
+
+        try:
+
+            # =====================================
+            # DECODIFICAR TOKEN
+            # =====================================
+
+            try:
+
+                payload = jwt.decode(
+                    token,
+                    settings.secret_key,
+                    algorithms=["HS256"]
+                )
+
+            except jwt.ExpiredSignatureError:
+
+                raise HTTPException(
+                    status_code=400,
+                    detail="El enlace expiró"
+                )
+
+            except jwt.InvalidTokenError:
+
+                raise HTTPException(
+                    status_code=400,
+                    detail="Token inválido"
+                )
+
+            pago_id = payload.get("pagoId")
+
+            if not pago_id:
+
+                raise HTTPException(
+                    status_code=400,
+                    detail="Token inválido"
+                )
+
+            # =====================================
+            # BUSCAR PAGO
+            # =====================================
+
+            pago = (
+                self.pago_repository
+                .get(pago_id)
+            )
+
+            if not pago:
+
+                raise HTTPException(
+                    status_code=404,
+                    detail="Pago no encontrado"
+                )
+
+            # =====================================
+            # VALIDAR ESTADO
+            # =====================================
+
+            if (
+                pago.estado
+                != EstadoPagoEnum.PENDIENTE
+            ):
+
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "El pago ya fue procesado"
+                    )
+                )
+
+            # =====================================
+            # VALIDAR EXPIRACIÓN
+            # =====================================
+
+            if (
+                pago.fechaExpiracion
+                < datetime.utcnow()
+            ):
+
+                pago.estado = (
+                    EstadoPagoEnum.EXPIRADO
+                )
+
+                pago.factura.estadoFactura = (
+                    EstadoFacturaEnum.CANCELADA
+                )
+
+                self.db.commit()
+
+                raise HTTPException(
+                    status_code=400,
+                    detail="La reserva expiró"
+                )
+
+            factura = pago.factura
+
+            # =====================================
+            # BUSCAR CLIENTE EXISTENTE
+            # =====================================
+
+            cliente = (
+                self.db.query(Cliente)
+                .filter(
+                    Cliente.correo == correo
+                )
+                .first()
+            )
+
+            # =====================================
+            # CREAR CLIENTE INVITADO
+            # =====================================
+
+            if not cliente:
+
+                cliente = Cliente(
+                    nombres=nombres,
+                    apellidos=apellidos,
+                    correo=correo,
+                    telefono=telefono,
+                    puntosAcumulados=0,
+                    estaActivo=True
+                )
+
+                self.db.add(cliente)
+
+                self.db.flush()
+
+            # =====================================
+            # ASOCIAR CLIENTE
+            # =====================================
+
+            factura.clienteId = cliente.id
+
+            # =====================================
+            # APROBAR PAGO
+            # =====================================
+
+            pago.estado = (
+                EstadoPagoEnum.APROBADO
+            )
+
+            pago.fechaPago = datetime.utcnow()
+
+            # =====================================
+            # PAGAR FACTURA
+            # =====================================
+
+            factura.estadoFactura = (
+                EstadoFacturaEnum.PAGADA
+            )
+
+            factura.codigoTransaccion = (
+                f"TX-{factura.id}-"
+                f"{int(datetime.utcnow().timestamp())}"
+            )
+
+            self.db.commit()
+
+            self.db.refresh(factura)
+
+            return {
+                "mensaje": (
+                    "Pago confirmado "
+                    "correctamente"
+                ),
+                "facturaId": factura.id,
+                "codigoTransaccion": (
+                    factura.codigoTransaccion
+                ),
+                "estadoFactura": (
+                    factura.estadoFactura
+                ),
+                "total": factura.total
+            }
+
+        except HTTPException:
+
+            self.db.rollback()
+
+            raise
+
+        except Exception as e:
+
+            self.db.rollback()
+
+            raise HTTPException(
+                status_code=500,
+                detail=str(e)
+            )

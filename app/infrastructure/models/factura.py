@@ -2,7 +2,7 @@ from sqlalchemy import Column, Float, ForeignKey, Integer, DateTime, String, Enu
 from app.infrastructure.models.base import Base
 from sqlalchemy.orm import relationship
 
-from app.infrastructure.models import EstadoFacturaEnum
+from app.infrastructure.models.EstadoFacturaEnum import EstadoFacturaEnum
 
 class Factura(Base):
     """
@@ -12,7 +12,7 @@ class Factura(Base):
     __tablename__ = "facturas"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    clienteId = Column(ForeignKey("clientes.id"), nullable=False)
+    clienteId = Column(ForeignKey("clientes.id"), nullable=True)
 
     subTotal = Column(Float, nullable=False, default=0)
     descuento = Column(Float, nullable=False, default=0)
@@ -20,7 +20,7 @@ class Factura(Base):
 
     fechaCreacion = Column(DateTime, nullable=False)
     fechaExpiracionReserva = Column(DateTime, nullable=True)
-    codigoTransaccion = Column(String(100), nullable=False)
+    codigoTransaccion = Column(String(100), nullable=True)
     estadoFactura = Column(Enum(EstadoFacturaEnum), nullable=False, default=EstadoFacturaEnum.RESERVADA)
 
     cliente = relationship("Cliente", back_populates="facturas")    

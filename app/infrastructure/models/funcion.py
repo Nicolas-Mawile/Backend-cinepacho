@@ -1,5 +1,5 @@
 """Funcion model."""
-from sqlalchemy import Column, Integer, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, ForeignKey, DateTime, Boolean
 from .base import Base
 from sqlalchemy.orm import relationship
 
@@ -8,6 +8,7 @@ class Funcion(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     fechaHora = Column(DateTime, nullable=False)
+    estaActiva = Column(Boolean, default=True, nullable=False)
 
     peliculaId = Column(Integer, ForeignKey("peliculas.id"), nullable=False)
     salaId = Column(Integer, ForeignKey("salas.id"), nullable=False)
