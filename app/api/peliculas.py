@@ -1,30 +1,13 @@
 """Endpoints de gestion de peliculas."""
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-from typing import Optional
 from app.database import get_db
 from app.infrastructure.models.pelicula import Pelicula
 from app.api.dependencies import requireRole
+from app.api.schemas.pelicula import PeliculaCreate, PeliculaUpdate
 
 router = APIRouter(prefix="/peliculas", tags=["peliculas"])
-
-
-class PeliculaCreate(BaseModel):
-    titulo: str
-    duracionMinutos: int
-    linkTrailer: Optional[str] = None
-    linkPoster: Optional[str] = None
-    sinopsis: Optional[str] = None
-
-
-class PeliculaUpdate(BaseModel):
-    titulo: Optional[str] = None
-    duracionMinutos: Optional[int] = None
-    linkTrailer: Optional[str] = None
-    linkPoster: Optional[str] = None
-    sinopsis: Optional[str] = None
 
 
 @router.get("")
