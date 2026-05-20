@@ -2,7 +2,7 @@
 from fastapi import APIRouter
 from app.api.multiplex.multiplex import router as multiplex_router
 from app.api.salas import router as salas_router
-from app.api.peliculas import router as peliculas_router
+from app.api.peliculas.peliculas import router as peliculas_router
 from app.api.funciones import router as funciones_router
 from app.api.cartelera import router as cartelera_router
 from app.api.auth.auth import router as auth_router
