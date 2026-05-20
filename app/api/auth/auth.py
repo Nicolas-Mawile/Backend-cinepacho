@@ -1,6 +1,5 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 from sqlalchemy import select
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -81,7 +80,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
 
         if usuario.intentosFallidos >= 5:
             from datetime import timedelta
-            usuario.bloqueadoHasta = datetime.now(timezone.utc) + timedelta(minutes=15)
+            usuario.bloqueadoHasta = datetime.now(datetime.timezone.utc) + timedelta(minutes=15)
         
         db.commit()
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
