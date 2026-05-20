@@ -6,7 +6,7 @@ from sqlalchemy import select
 from typing import Optional
 from app.database import get_db
 from app.infrastructure.models.pelicula import Pelicula
-from app.api.dependencies import get_current_admin_general
+from app.api.dependencies import requireRole
 
 router = APIRouter(prefix="/peliculas", tags=["peliculas"])
 
@@ -45,7 +45,7 @@ def obtener_pelicula(id: int, db: Session = Depends(get_db)):
 def crear_pelicula(
     data: PeliculaCreate,
     db: Session = Depends(get_db),
-    _=Depends(get_current_admin_general)
+    _=Depends(requireRole(["ADMIN-GENERAL"]))
 ):
     pelicula = Pelicula(**data.model_dump(), estaActiva=True)
     db.add(pelicula)
@@ -59,7 +59,7 @@ def actualizar_pelicula(
     id: int,
     data: PeliculaUpdate,
     db: Session = Depends(get_db),
-    _=Depends(get_current_admin_general)
+    _=Depends(requireRole(["ADMIN-GENERAL"]))
 ):
     pelicula = db.get(Pelicula, id)
     if not pelicula:
@@ -75,7 +75,7 @@ def actualizar_pelicula(
 def desactivar_pelicula(
     id: int,
     db: Session = Depends(get_db),
-    _=Depends(get_current_admin_general)
+    _=Depends(requireRole(["ADMIN-GENERAL"]))
 ):
     pelicula = db.get(Pelicula, id)
     if not pelicula:
