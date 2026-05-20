@@ -8,6 +8,7 @@ class Funcion(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     fechaHora = Column(DateTime, nullable=False)
+    fechaHoraFin = Column(DateTime, nullable=False)
     estaActiva = Column(Boolean, default=True, nullable=False)
 
     peliculaId = Column(Integer, ForeignKey("peliculas.id"), nullable=False)
@@ -15,5 +16,4 @@ class Funcion(Base):
 
     pelicula = relationship("Pelicula", back_populates="funciones")
     sala = relationship("Sala", back_populates="funciones")
-
     boletas = relationship("Boleta", back_populates="funcion")
