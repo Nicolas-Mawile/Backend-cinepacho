@@ -1105,3 +1105,92 @@ class CheckoutService:
                 status_code=500,
                 detail=str(e)
             )
+        
+
+    def obtener_boletas_factura(
+    self,
+    factura_id: int,
+    cliente_id: int
+):
+
+        factura = (
+            self.factura_repository
+            .get_by_id(factura_id)
+        )
+
+        if not factura:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Factura no encontrada"
+            )
+
+        if factura.clienteId != cliente_id:
+
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "No autorizado para "
+                    "ver esta factura"
+                )
+            )
+
+        detalles = factura.detalles
+
+        boletas = []
+
+        for detalle in detalles:
+
+            if not detalle.boleta:
+                continue
+
+            boleta = detalle.boleta
+
+            boletas.append({
+
+                "boletaId": boleta.id,
+
+                "pelicula": (
+                    boleta.funcion
+                    .pelicula
+                    .titulo
+                ),
+
+                "sala": (
+                    f"Sala "
+                    f"{boleta.funcion.sala.numero}"
+                ),
+
+                "fechaHora": (
+                    boleta.funcion.fechaHora
+                ),
+
+                "fila": str(
+                    boleta.silla.fila
+                ),
+
+                "columna": (
+                    boleta.silla.columna
+                )
+            })
+
+        return {
+
+            "facturaId": factura.id,
+
+            "codigoTransaccion": (
+                factura.codigoTransaccion
+            ),
+
+            "estado": (
+                factura.estadoFactura.value
+            ),
+
+            "fechaCompra": (
+                factura.fechaCreacion
+            ),
+
+            "total": factura.total,
+
+            "boletas": boletas
+        }

@@ -1,16 +1,16 @@
 """Alembic migration script template."""
-"""make fechaPago nullable
+"""add seccion peliculas y cartelera
 
-Revision ID: 7f18848488b1
+Revision ID: ec46ffbe90cd
 Revises: 
-Create Date: 2026-05-18 19:29:18.760084
+Create Date: 2026-05-19 20:19:29.738744
 """
 
 from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = '7f18848488b1'
+revision = 'ec46ffbe90cd'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -68,6 +68,7 @@ def upgrade():
     sa.Column('linkTrailer', sa.String(), nullable=True),
     sa.Column('linkPoster', sa.String(), nullable=True),
     sa.Column('sinopsis', sa.String(), nullable=True),
+    sa.Column('estaActiva', sa.Boolean(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('permiso',
@@ -167,6 +168,7 @@ def upgrade():
     op.create_table('funciones',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('fechaHora', sa.DateTime(), nullable=False),
+    sa.Column('fechaHoraFin', sa.DateTime(), nullable=False),
     sa.Column('estaActiva', sa.Boolean(), nullable=False),
     sa.Column('peliculaId', sa.Integer(), nullable=False),
     sa.Column('salaId', sa.Integer(), nullable=False),
