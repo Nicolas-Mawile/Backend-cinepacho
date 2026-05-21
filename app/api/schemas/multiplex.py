@@ -39,3 +39,17 @@ class MultiplexResponse(BaseModel):
         "from_attributes": True,
         "populate_by_name": True
     }
+
+
+class MultiplexSummaryResponse(BaseModel):
+    id: int
+    nombre: str
+    codigo: str
+    ciudad: str
+    direccion: str
+    activo: bool = Field(alias="estaActivo")
+
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
+    }

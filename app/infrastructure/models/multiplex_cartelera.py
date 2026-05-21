@@ -10,6 +10,9 @@ class MultiplexCartelera(Base):
     multiplexId = Column(Integer, ForeignKey("multiplex.id"), nullable=False)
     peliculaId = Column(Integer, ForeignKey("peliculas.id"), nullable=False)
 
+    multiplex = relationship("Multiplex")
+    pelicula = relationship("Pelicula")
+
     __table_args__ = (
         UniqueConstraint("multiplexId", "peliculaId", name="uq_multiplex_pelicula"),
     )

@@ -9,6 +9,7 @@ ROLE_PERMISSIONS = {
     # =====================================================
     "CLIENTE": [
         "ver-cartelera-general",
+        "ver-cartelera-multiplex",
         "ver-listado-multiplex",
         "ver-detalle-multiplex",
         "ver-catalogo-comidas",
@@ -36,6 +37,7 @@ ROLE_PERMISSIONS = {
     # =====================================================
     "EMPLEADO-CAJERO": [
         "ver-cartelera-general",
+        "ver-cartelera-multiplex",
         "ver-listado-multiplex",
         "ver-detalle-multiplex",
         "ver-catalogo-comidas",
@@ -56,8 +58,11 @@ ROLE_PERMISSIONS = {
     "ADMIN-MULTIPLEX": [
         "crear-funcion",
         "actualizar-funcion",
+        "cambiar-estado-funcion",
         "ver-listado-funciones-multiplex",
         "ver-detalle-funcion",
+        "ver-cartelera-multiplex",
+        "administrar-cartelera-multiplex",
         "ver-listado-empleados",
         "ver-detalle-empleado",
         "ver-hoja-vida"
@@ -97,6 +102,16 @@ ROLE_PERMISSIONS = {
         "cambiar-estado-pelicula",
         "ver-listado-peliculas",
         "ver-detalle-pelicula",
+        "ver-cartelera-general",
+        "ver-cartelera-multiplex",
+        "administrar-cartelera-general",
+        "administrar-cartelera-multiplex",
+        "ver-listado-funciones",
+        "ver-listado-funciones-multiplex",
+        "ver-detalle-funcion",
+        "crear-funcion",
+        "actualizar-funcion",
+        "cambiar-estado-funcion",
         # SNACKS
         "crear-snack",
         "actualizar-snack",
