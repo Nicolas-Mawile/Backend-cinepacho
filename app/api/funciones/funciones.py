@@ -1,58 +1,105 @@
 """Endpoints de funciones."""
+
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+
+from app.api.dependencies import requirePermission
+from app.api.schemas.funcion import FuncionCreate, FuncionResponse, FuncionUpdate
 from app.database import get_db
-from app.infrastructure.models.funcion import Funcion
-from app.infrastructure.models.pelicula import Pelicula
-from app.infrastructure.models.sala import Sala
-from app.infrastructure.repositories.funcion_repository import FuncionRepository
-from app.api.dependencies import requireRole
+from app.domain.exceptions import (
+    FuncionNotFoundError,
+    FuncionValidationError,
+    MultiplexNotFoundError,
+    SalaNotFoundError,
+)
+from app.domain.services.funcion_service import FuncionService
 
 router = APIRouter(tags=["funciones"])
 
 
-class FuncionCreate(BaseModel):
-    peliculaId: int
-    salaId: int
-    fechaHora: datetime
+def _map_funcion_error(exc: Exception):
+    if isinstance(exc, (FuncionNotFoundError, SalaNotFoundError, MultiplexNotFoundError)):
+        raise HTTPException(status_code=404, detail=str(exc))
+    if isinstance(exc, FuncionValidationError):
+        message = str(exc).lower()
+        status_code = 409 if any(token in message for token in ["dependencias", "solapamiento", "ya existe", "ya esta", "boletas vendidas"]) else 400
+        raise HTTPException(status_code=status_code, detail=str(exc))
+    raise exc
 
 
-@router.post("/funciones", status_code=201)
-def crear_funcion(data: FuncionCreate, db: Session = Depends(get_db), _=Depends(requireRole(["ADMIN-MX"]))):
-    repo = FuncionRepository(db)
-    sala = db.get(Sala, data.salaId)
-    if not sala or not sala.estaActiva:
-        raise HTTPException(status_code=404, detail="Sala no encontrada o inactiva")
-    pelicula = db.get(Pelicula, data.peliculaId)
-    if not pelicula or not pelicula.estaActiva:
-        raise HTTPException(status_code=400, detail="Pelicula no encontrada o inactiva")
-    if not repo.pelicula_en_cartelera(data.peliculaId, sala.multiplexId):
-        raise HTTPException(status_code=400, detail="La pelicula no esta en la cartelera de este multiplex")
-    fecha_fin = data.fechaHora + timedelta(minutes=pelicula.duracionMinutos)
-    if repo.hay_solapamiento(data.salaId, data.fechaHora, fecha_fin):
-        raise HTTPException(status_code=409, detail="Ya existe una funcion programada en ese horario para esta sala")
-    return repo.add(Funcion(peliculaId=data.peliculaId, salaId=data.salaId, fechaHora=data.fechaHora, fechaHoraFin=fecha_fin, estaActiva=True))
+@router.post("/funciones", status_code=201, response_model=FuncionResponse)
+def crear_funcion(data: FuncionCreate, db: Session = Depends(get_db), _=Depends(requirePermission("crear-funcion"))):
+    service = FuncionService(db)
+    try:
+        return service.crear_funcion(data)
+    except Exception as exc:
+        _map_funcion_error(exc)
 
 
-@router.get("/multiplex/{id}/funciones")
-def funciones_por_multiplex(id: int, db: Session = Depends(get_db)):
-    return FuncionRepository(db).listar_por_multiplex(id)
+@router.get("/multiplex/{id}/funciones", response_model=list[FuncionResponse])
+def funciones_por_multiplex(id: int, db: Session = Depends(get_db), _=Depends(requirePermission("ver-listado-funciones-multiplex"))):
+    service = FuncionService(db)
+    try:
+        return service.listar_por_multiplex(id)
+    except Exception as exc:
+        _map_funcion_error(exc)
 
 
-@router.get("/salas/{id}/funciones")
-def funciones_por_sala(id: int, db: Session = Depends(get_db)):
-    return FuncionRepository(db).listar_por_sala(id)
+@router.get("/salas/{id}/funciones", response_model=list[FuncionResponse])
+def funciones_por_sala(id: int, db: Session = Depends(get_db), _=Depends(requirePermission("ver-listado-funciones-multiplex"))):
+    service = FuncionService(db)
+    try:
+        return service.listar_por_sala(id)
+    except Exception as exc:
+        _map_funcion_error(exc)
+
+
+@router.get("/peliculas/{pelicula_id}/funciones", response_model=list[FuncionResponse])
+def funciones_por_pelicula(
+    pelicula_id: int,
+    db: Session = Depends(get_db),
+    _=Depends(requirePermission("ver-listado-funciones")),
+):
+    service = FuncionService(db)
+    try:
+        return service.listar_por_pelicula(pelicula_id)
+    except Exception as exc:
+        _map_funcion_error(exc)
+
+
+@router.get("/multiplex/{multiplex_id}/peliculas/{pelicula_id}/funciones", response_model=list[FuncionResponse])
+def funciones_pelicula_por_multiplex(
+    multiplex_id: int,
+    pelicula_id: int,
+    db: Session = Depends(get_db),
+    _=Depends(requirePermission("ver-listado-funciones-multiplex")),
+):
+    service = FuncionService(db)
+    try:
+        return service.listar_por_pelicula_y_multiplex(multiplex_id, pelicula_id)
+    except Exception as exc:
+        _map_funcion_error(exc)
+
+
+@router.put("/funciones/{id}", response_model=FuncionResponse)
+def editar_funcion(
+    id: int,
+    data: FuncionUpdate,
+    db: Session = Depends(get_db),
+    _=Depends(requirePermission("actualizar-funcion")),
+):
+    service = FuncionService(db)
+    try:
+        return service.editar_funcion(id, data)
+    except Exception as exc:
+        _map_funcion_error(exc)
 
 
 @router.delete("/funciones/{id}")
-def eliminar_funcion(id: int, db: Session = Depends(get_db), _=Depends(requireRole(["ADMIN-MX"]))):
-    repo = FuncionRepository(db)
-    funcion = repo.get(id)
-    if not funcion:
-        raise HTTPException(status_code=404, detail="Funcion no encontrada")
-    if repo.tiene_boletas(id):
-        raise HTTPException(status_code=409, detail="No se puede eliminar: la funcion tiene boletas vendidas")
-    repo.delete(id)
-    return {"mensaje": "Funcion eliminada correctamente"}
+def eliminar_funcion(id: int, db: Session = Depends(get_db), _=Depends(requirePermission("cambiar-estado-funcion"))):
+    service = FuncionService(db)
+    try:
+        service.eliminar_funcion(id)
+        return {"mensaje": "Funcion eliminada correctamente"}
+    except Exception as exc:
+        _map_funcion_error(exc)

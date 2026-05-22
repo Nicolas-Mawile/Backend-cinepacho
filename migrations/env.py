@@ -1,9 +1,12 @@
 from sqlalchemy import create_engine, pool
 from alembic import context
 import os
+import sys
 from dotenv import load_dotenv
 from app.infrastructure.models.base import Base
 
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 load_dotenv()
 
 config = context.config

@@ -7,6 +7,7 @@ PERMISOS = [
     # CLIENTE
     # =====================================================
     "ver-cartelera-general",
+    "ver-cartelera-multiplex",
     "ver-listado-multiplex",
     "ver-detalle-multiplex",
     "ver-catalogo-comidas",
@@ -83,6 +84,8 @@ PERMISOS = [
     "cambiar-estado-funcion",
     "ver-listado-funciones-multiplex",
     "ver-detalle-funcion",
+    "administrar-cartelera-general",
+    "administrar-cartelera-multiplex",
 
     # =====================================================
     # REPORTES

@@ -1,10 +1,13 @@
 """Funcion repository."""
 from datetime import datetime
-from sqlalchemy.orm import Session
+
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import select, and_
-from app.infrastructure.base_repository import AbstractRepository
+
 from app.infrastructure.models.funcion import Funcion
 from app.infrastructure.models.multiplex_cartelera import MultiplexCartelera
+from app.infrastructure.models.pelicula import Pelicula
+from app.infrastructure.models.sala import Sala
 
 
 class FuncionRepository:
@@ -29,8 +32,31 @@ class FuncionRepository:
         self.db.refresh(entity)
         return entity
 
+    def get_pelicula(self, pelicula_id: int):
+        return self.db.get(Pelicula, pelicula_id)
+
+    def get_sala(self, sala_id: int):
+        return self.db.get(Sala, sala_id)
+
+    def get_multiplex(self, multiplex_id: int):
+        from app.infrastructure.models.multiplex import Multiplex
+
+        return self.db.get(Multiplex, multiplex_id)
+
     def get(self, entity_id: int) -> Funcion | None:
         return self.db.get(Funcion, entity_id)
+
+    def get_detallada(self, entity_id: int) -> Funcion | None:
+        stmt = (
+            select(Funcion)
+            .options(
+                selectinload(Funcion.pelicula),
+                selectinload(Funcion.sala).selectinload(Sala.multiplex),
+            )
+            .where(Funcion.id == entity_id)
+        )
+        result = self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
     def get_all(self, skip: int = 0, limit: int = 10) -> list[Funcion]:
         result = self.db.execute(select(Funcion).offset(skip).limit(limit))
@@ -71,18 +97,43 @@ class FuncionRepository:
         result = self.db.execute(stmt.limit(1))
         return result.scalar_one_or_none() is not None
 
-    def listar_por_multiplex(self, multiplex_id: int) -> list[Funcion]:
-        from app.infrastructure.models.sala import Sala
+    def _query_detallada(self, stmt):
         result = self.db.execute(
-            select(Funcion).join(Sala).where(Sala.multiplexId == multiplex_id)
+            stmt.options(
+                selectinload(Funcion.pelicula),
+                selectinload(Funcion.sala).selectinload(Sala.multiplex),
+            )
         )
         return list(result.scalars().all())
 
-    def listar_por_sala(self, sala_id: int) -> list[Funcion]:
-        result = self.db.execute(
-            select(Funcion).where(Funcion.salaId == sala_id)
+    def listar_por_pelicula(self, pelicula_id: int) -> list[Funcion]:
+        stmt = select(Funcion).where(Funcion.peliculaId == pelicula_id).order_by(Funcion.fechaHora)
+        return self._query_detallada(stmt)
+
+    def listar_por_pelicula_y_multiplex(self, multiplex_id: int, pelicula_id: int) -> list[Funcion]:
+        stmt = (
+            select(Funcion)
+            .join(Sala, Sala.id == Funcion.salaId)
+            .where(
+                Sala.multiplexId == multiplex_id,
+                Funcion.peliculaId == pelicula_id,
+            )
+            .order_by(Funcion.fechaHora)
         )
-        return list(result.scalars().all())
+        return self._query_detallada(stmt)
+
+    def listar_por_multiplex(self, multiplex_id: int) -> list[Funcion]:
+        stmt = (
+            select(Funcion)
+            .join(Sala, Sala.id == Funcion.salaId)
+            .where(Sala.multiplexId == multiplex_id)
+            .order_by(Funcion.fechaHora)
+        )
+        return self._query_detallada(stmt)
+
+    def listar_por_sala(self, sala_id: int) -> list[Funcion]:
+        stmt = select(Funcion).where(Funcion.salaId == sala_id).order_by(Funcion.fechaHora)
+        return self._query_detallada(stmt)
 
     def tiene_boletas(self, funcion_id: int) -> bool:
         from app.infrastructure.models.boleta import Boleta

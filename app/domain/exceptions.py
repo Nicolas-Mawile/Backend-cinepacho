@@ -42,3 +42,25 @@ class SalaConfigurationError(ValidationError):
 class SalaDependenciesError(ValidationError):
     """La sala tiene dependencias (funciones, sillas)."""
     pass
+
+
+# Excepciones de Cartelera
+class CarteleraNotFoundError(NotFoundError):
+    """Entrada de cartelera no encontrada."""
+    pass
+
+
+class CarteleraValidationError(ValidationError):
+    """Validación inválida de cartelera."""
+    pass
+
+
+# Excepciones de Funcion
+class FuncionNotFoundError(NotFoundError):
+    """Función no encontrada."""
+    pass
+
+
+class FuncionValidationError(ValidationError):
+    """Validación inválida de función."""
+    pass
