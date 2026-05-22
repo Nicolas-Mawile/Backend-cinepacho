@@ -31,7 +31,7 @@ from app.api.schemas.compra import (
 
     MisBoletasResponse,
 
-    ConfirmarPagoRequest
+    ConfirmarPagoRequest, ConfirmarPagoResponse, FacturaBoletasResponse
 )
 
 router = APIRouter(
@@ -166,7 +166,7 @@ def solicitar_pago(
 
 @router.post(
     "/compras/confirmar-pago",
-    response_model=PagoResponse,
+    response_model=ConfirmarPagoResponse,
     summary="Confirmar pago",
 )
 def confirmar_pago(
@@ -327,6 +327,49 @@ def obtener_mis_boletas(
 
     except HTTPException:
 
+        raise
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+
+# =========================================================
+# BOLETAS POR FACTURA
+# =========================================================
+
+@router.get(
+    "/facturas/{factura_id}/boletas",
+    response_model=FacturaBoletasResponse,
+    summary="Obtener boletas de una factura",
+)
+def obtener_boletas_factura(
+    factura_id: int,
+    service: CheckoutService = Depends(
+        get_checkout_service
+    ),
+    usuario: Usuario = Depends(
+        requirePermission(
+            "compra-boletas"
+        )
+    ),
+):
+
+    try:
+
+        response = (
+            service.obtener_boletas_factura(
+                factura_id=factura_id,
+                cliente_id=usuario.cliente.id
+            )
+        )
+
+        return response
+
+    except HTTPException:
         raise
 
     except Exception as e:

@@ -7,6 +7,10 @@ from typing import Generator
 from .config import settings
 from .infrastructure.models.base import Base
 
+# Importar todos los modelos EXPLÍCITAMENTE para que se registren en la metadata
+# Esto es crítico para que create_all() funcione correctamente
+import app.infrastructure.models as _models  # noqa: F401
+
 
 def _normalize_sync_database_url(url: str) -> str:
     """Asegura un driver compatible con engine síncrono."""

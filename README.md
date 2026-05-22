@@ -37,7 +37,7 @@ Accede a: **http://localhost:8000/docs**
 ## 🔑 Variables de Entorno (.env)
 
 ```
-DATABASE_URL=sqlite+aiosqlite:///./cinepacho.db
+DATABASE_URL=postgresql://cinepacho_user:123456@localhost:5432/cinepacho
 SECRET_KEY=tu-clave-secreta
 DEBUG=True
 ```
