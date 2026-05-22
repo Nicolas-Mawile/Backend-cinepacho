@@ -202,3 +202,48 @@ class MisBoletasResponse(BaseModel):
     columna: int
 
     fechaCompra: datetime
+
+class ConfirmarPagoResponse(BaseModel):
+
+    mensaje: str
+
+    facturaId: int
+
+    codigoTransaccion: str
+
+    estadoFactura: str
+
+    total: float
+
+    # =========================================================
+# BOLETAS POR FACTURA
+# =========================================================
+
+class BoletaFacturaResponse(BaseModel):
+
+    boletaId: int
+
+    pelicula: str
+
+    sala: str
+
+    fechaHora: datetime
+
+    fila: str
+
+    columna: int
+
+
+class FacturaBoletasResponse(BaseModel):
+
+    facturaId: int
+
+    codigoTransaccion: str
+
+    estado: str
+
+    fechaCompra: datetime
+
+    total: float
+
+    boletas: List[BoletaFacturaResponse]
