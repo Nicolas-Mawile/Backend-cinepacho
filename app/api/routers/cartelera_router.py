@@ -7,11 +7,7 @@ from app.api.dependencies import requirePermission
 from app.api.schemas.cartelera import CarteleraAdd, CarteleraItemResponse
 from app.api.schemas.pelicula import PeliculaResponse
 from app.database import get_db
-from app.domain.exceptions import (
-    CarteleraNotFoundError,
-    CarteleraValidationError,
-    MultiplexNotFoundError,
-)
+from app.domain.exceptions import (CarteleraNotFoundError, CarteleraValidationError, MultiplexNotFoundError)
 from app.domain.services.cartelera_service import CarteleraService
 
 router = APIRouter(tags=["cartelera"])
@@ -28,9 +24,7 @@ def _map_cartelera_error(exc: Exception):
 
 @router.get("/cartelera", response_model=list[PeliculaResponse])
 def ver_cartelera_general(
-    db: Session = Depends(get_db),
-    _: object = Depends(requirePermission("ver-cartelera-general")),
-):
+    db: Session = Depends(get_db),):
     service = CarteleraService(db)
     return service.ver_cartelera_general()
 
@@ -38,9 +32,7 @@ def ver_cartelera_general(
 @router.get("/multiplex/{multiplex_id}/cartelera", response_model=list[CarteleraItemResponse])
 def ver_cartelera(
     multiplex_id: int,
-    db: Session = Depends(get_db),
-    _: object = Depends(requirePermission("ver-cartelera-multiplex")),
-):
+    db: Session = Depends(get_db),):
     service = CarteleraService(db)
     try:
         return service.ver_cartelera_por_multiplex(multiplex_id)

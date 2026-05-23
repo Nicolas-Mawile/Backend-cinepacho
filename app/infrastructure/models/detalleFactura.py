@@ -20,3 +20,12 @@ class DetalleFactura(Base):
 
     boleta = relationship("Boleta", back_populates="detalle")
     comida = relationship("Comida", back_populates="detalles")
+
+    @property
+    def es_valido(self):
+
+        return (
+            self.boletaId is not None
+            or
+            self.comidaId is not None
+        )

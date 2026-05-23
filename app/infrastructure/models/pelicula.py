@@ -7,7 +7,7 @@ class Pelicula(Base):
     __tablename__ = "peliculas"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    titulo = Column(String, nullable=False)
+    titulo = Column(String, nullable=False, unique=True)
     duracionMinutos = Column(Integer, nullable=False)
     linkTrailer = Column(String, nullable=True)
     linkPoster = Column(String, nullable=True)

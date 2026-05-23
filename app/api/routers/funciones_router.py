@@ -37,7 +37,7 @@ def crear_funcion(data: FuncionCreate, db: Session = Depends(get_db), _=Depends(
 
 
 @router.get("/multiplex/{id}/funciones", response_model=list[FuncionResponse])
-def funciones_por_multiplex(id: int, db: Session = Depends(get_db), _=Depends(requirePermission("ver-listado-funciones-multiplex"))):
+def funciones_por_multiplex(id: int, db: Session = Depends(get_db), ):
     service = FuncionService(db)
     try:
         return service.listar_por_multiplex(id)
@@ -46,7 +46,7 @@ def funciones_por_multiplex(id: int, db: Session = Depends(get_db), _=Depends(re
 
 
 @router.get("/salas/{id}/funciones", response_model=list[FuncionResponse])
-def funciones_por_sala(id: int, db: Session = Depends(get_db), _=Depends(requirePermission("ver-listado-funciones-multiplex"))):
+def funciones_por_sala(id: int, db: Session = Depends(get_db), ):
     service = FuncionService(db)
     try:
         return service.listar_por_sala(id)
@@ -58,7 +58,6 @@ def funciones_por_sala(id: int, db: Session = Depends(get_db), _=Depends(require
 def funciones_por_pelicula(
     pelicula_id: int,
     db: Session = Depends(get_db),
-    _=Depends(requirePermission("ver-listado-funciones")),
 ):
     service = FuncionService(db)
     try:
@@ -72,7 +71,6 @@ def funciones_pelicula_por_multiplex(
     multiplex_id: int,
     pelicula_id: int,
     db: Session = Depends(get_db),
-    _=Depends(requirePermission("ver-listado-funciones-multiplex")),
 ):
     service = FuncionService(db)
     try:

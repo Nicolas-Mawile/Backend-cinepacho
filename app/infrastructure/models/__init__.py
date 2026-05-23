@@ -7,10 +7,11 @@ from .configuracion import Configuracion
 from .contrato import Contrato
 from .detalleFactura import DetalleFactura
 from .empleado import Empleado
-from .historial_cargo import HistorialCargo
 from .evaluacion import Evaluacion
 from .factura import Factura
 from .funcion import Funcion
+from .historial_cargo import HistorialCargo
+from .multiplex_cartelera import MultiplexCartelera
 from .multiplex import Multiplex
 from .pago import Pago
 from .pelicula import Pelicula

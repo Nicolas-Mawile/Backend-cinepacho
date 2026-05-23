@@ -1,54 +1,178 @@
 """Seed data for cartelera por multiplex."""
 
 from sqlalchemy import select
+
 from app.database import SessionLocal
-from app.infrastructure.models.multiplex_cartelera import MultiplexCartelera
+
 from app.infrastructure.models.multiplex import Multiplex
 from app.infrastructure.models.pelicula import Pelicula
+from app.infrastructure.models.multiplex_cartelera import (
+    MultiplexCartelera
+)
+
+
+def create_cartelera_if_not_exists(
+    db,
+    multiplex_id: int,
+    pelicula_id: int
+):
+
+    existing = db.execute(
+        select(MultiplexCartelera).where(
+            MultiplexCartelera.multiplexId == multiplex_id,
+            MultiplexCartelera.peliculaId == pelicula_id
+        )
+    ).scalar_one_or_none()
+
+    if existing:
+        return False
+
+    entrada = MultiplexCartelera(
+        multiplexId=multiplex_id,
+        peliculaId=pelicula_id
+    )
+
+    db.add(entrada)
+
+    return True
+
+
+def remove_inactive_movies_from_cartelera(db):
+
+    relaciones = db.execute(
+        select(MultiplexCartelera)
+    ).scalars().all()
+
+    eliminadas = 0
+
+    for relacion in relaciones:
+
+        pelicula = db.execute(
+            select(Pelicula).where(
+                Pelicula.id == relacion.peliculaId
+            )
+        ).scalar_one_or_none()
+
+        if not pelicula:
+
+            db.delete(relacion)
+            eliminadas += 1
+            continue
+
+        if not pelicula.estaActiva:
+
+            db.delete(relacion)
+            eliminadas += 1
+
+    if eliminadas > 0:
+
+        print(
+            f"🗑️ Relaciones eliminadas "
+            f"de cartelera: {eliminadas}"
+        )
+
+
+def validate_integrity(db):
+
+    relaciones = db.execute(
+        select(MultiplexCartelera)
+    ).scalars().all()
+
+    combinaciones = set()
+
+    for relacion in relaciones:
+
+        key = (
+            relacion.multiplexId,
+            relacion.peliculaId
+        )
+
+        if key in combinaciones:
+
+            raise Exception(
+                "Relación duplicada en cartelera"
+            )
+
+        combinaciones.add(key)
+
+    print("✅ Validación cartelera completada")
 
 
 def run():
-    """
-    Asigna las películas activas a todos los multiplexes.
-    Idempotente: no duplica registros.
-    """
-    with SessionLocal() as db:
-        try:
-            existing = db.execute(select(MultiplexCartelera).limit(1)).scalar_one_or_none()
-            if existing:
-                print("✔ Seed cartelera: ya existen registros, omitiendo.")
-                return
 
-            multiplexes = db.execute(select(Multiplex)).scalars().all()
+    with SessionLocal() as db:
+
+        try:
+
+            print(
+                "\n🎬 Iniciando seed cartelera...\n"
+            )
+
+            multiplexes = db.execute(
+                select(Multiplex)
+            ).scalars().all()
+
             peliculas_activas = db.execute(
-                select(Pelicula).where(Pelicula.estaActiva == True)
+                select(Pelicula).where(
+                    Pelicula.estaActiva == True
+                )
             ).scalars().all()
 
             if not multiplexes:
-                print("✗ Seed cartelera: no hay multiplexes, ejecuta seed_multiplex primero.")
-                return
+
+                raise Exception(
+                    "No existen multiplexes"
+                )
+
             if not peliculas_activas:
-                print("✗ Seed cartelera: no hay películas activas, ejecuta seed_peliculas primero.")
-                return
+
+                raise Exception(
+                    "No existen películas activas"
+                )
 
             count = 0
+
             for multiplex in multiplexes:
+
                 for pelicula in peliculas_activas:
-                    entrada = MultiplexCartelera(
-                        multiplexId=multiplex.id,
-                        peliculaId=pelicula.id,
+
+                    created = create_cartelera_if_not_exists(
+                        db,
+                        multiplex.id,
+                        pelicula.id
                     )
-                    db.add(entrada)
-                    count += 1
+
+                    if created:
+
+                        count += 1
+
+                        print(
+                            f"✅ {multiplex.nombre} -> "
+                            f"{pelicula.titulo}"
+                        )
+
+            remove_inactive_movies_from_cartelera(db)
 
             db.commit()
-            print(f"✔ Seed cartelera: {count} entradas insertadas ({len(multiplexes)} multiplexes × {len(peliculas_activas)} películas).")
+
+            validate_integrity(db)
+
+            print(
+                f"\n✅ Seed cartelera completado "
+                f"({count} nuevas relaciones)\n"
+            )
 
         except Exception as e:
+
             db.rollback()
-            print(f"✗ Error en seed cartelera: {e}")
-            raise
+
+            print(
+                f"\n❌ Error en seed cartelera:\n{e}"
+            )
+
+            raise e
 
 
 if __name__ == "__main__":
+
     run()

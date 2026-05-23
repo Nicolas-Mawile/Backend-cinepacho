@@ -63,8 +63,7 @@ def crear_sala(multiplex_id: int, datos: SalaCreate, service: SalaService = Depe
 
 @router.get("/multiplex/{multiplex_id}/salas", response_model=list[SalaResponse], summary="Listar salas por multiplex",
             responses={200: {"description": "Lista de salas"}, 404: {"description": "Multiplex no encontrado"},},)
-def listar_salas_multiplex(multiplex_id: int, skip: int = Query(0, ge=0), limit: int = Query(10, ge=1, le=100), service: SalaService = Depends(get_service),
-                            _: Usuario = Depends(requirePermission("ver-salas-multiplex")),):
+def listar_salas_multiplex(multiplex_id: int, skip: int = Query(0, ge=0), limit: int = Query(10, ge=1, le=100), service: SalaService = Depends(get_service),):
     """
     Lista todas las salas de un multiplex.
     
@@ -80,7 +79,7 @@ def listar_salas_multiplex(multiplex_id: int, skip: int = Query(0, ge=0), limit:
 
 @router.get("/salas/{sala_id}", response_model=SalaResponse, summary="Obtener una sala específica", 
             responses={200: {"description": "Sala encontrada"}, 404: {"description": "Sala no encontrada"},},)
-def obtener_sala(sala_id: int, service: SalaService = Depends(get_service), _: Usuario = Depends(requirePermission("ver-detalle-sala")),):
+def obtener_sala(sala_id: int, service: SalaService = Depends(get_service),):
     """
     Obtiene los datos de una sala específica.
     

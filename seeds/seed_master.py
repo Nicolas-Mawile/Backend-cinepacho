@@ -11,8 +11,8 @@ from seeds.roles_permisos_seed import run as roles_permisos_seed
 from seeds.tipo_silla_seed import run as tipo_silla_seed
 
 from seeds.multiplex_seed import run as multiplex_seed
-from seeds.pelicula_seed import run as pelicula_seed
-from seeds.funcion_seed import run as funcion_seed
+from seeds.peliculas_seed import run as pelicula_seed
+from seeds.funciones_seed import run as funcion_seed
 
 from seeds.clientes_seed import run as clientes_seed
 from seeds.empleados_seed import run as empleados_seed

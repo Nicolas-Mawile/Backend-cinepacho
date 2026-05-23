@@ -1,16 +1,16 @@
 """Alembic migration script template."""
-"""add seccion peliculas y cartelera
+"""refactor_tablas_facturacion_y_snacks
 
-Revision ID: ec46ffbe90cd
+Revision ID: 8dafc8742529
 Revises: 
-Create Date: 2026-05-19 20:19:29.738744
+Create Date: 2026-05-22 09:52:23.465257
 """
 
 from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = 'ec46ffbe90cd'
+revision = '8dafc8742529'
 down_revision = None
 branch_labels = None
 depends_on = None

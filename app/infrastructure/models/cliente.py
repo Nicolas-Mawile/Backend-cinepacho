@@ -23,4 +23,4 @@ class Cliente(Base, Persona):
     usuario = relationship("Usuario", back_populates="cliente", uselist=False)   
     empleado = relationship("Empleado", back_populates="cliente", uselist=False) 
     evaluaciones = relationship("Evaluacion", back_populates="cliente")
-    facturas = relationship("Factura", back_populates="cliente")
+    facturas = relationship("Factura", back_populates="cliente", cascade="all")

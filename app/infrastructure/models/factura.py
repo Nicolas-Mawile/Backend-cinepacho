@@ -20,9 +20,9 @@ class Factura(Base):
 
     fechaCreacion = Column(DateTime, nullable=False)
     fechaExpiracionReserva = Column(DateTime, nullable=True)
-    codigoTransaccion = Column(String(100), nullable=True)
+    codigoTransaccion = Column(String(100), nullable=True, unique=True)
     estadoFactura = Column(Enum(EstadoFacturaEnum), nullable=False, default=EstadoFacturaEnum.RESERVADA)
 
     cliente = relationship("Cliente", back_populates="facturas")    
-    detalles = relationship("DetalleFactura", back_populates="factura")
-    pagos = relationship("Pago", back_populates="factura")
+    detalles = relationship("DetalleFactura", back_populates="factura", cascade="all, delete-orphan")
+    pagos = relationship("Pago", back_populates="factura", cascade="all, delete-orphan")

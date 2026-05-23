@@ -26,8 +26,7 @@ def get_repository():
 @router.get("/", response_model=list[MultiplexResponse])
 def listar_multiplex(ciudad: str | None = Query(None), activo: bool | None = Query(None),
                            pagina: int = Query(1, ge=1), limite: int = Query(20, ge=1, le=100),
-                           repo: MultiplexRepository = Depends(get_repository),
-                           _: Usuario = Depends(requirePermission("ver-listado-multiplex")),):
+                           repo: MultiplexRepository = Depends(get_repository),):
     
     skip = (pagina - 1) * limite
     return repo.listar(skip=skip, ciudad=ciudad, activo=activo, limite=limite)

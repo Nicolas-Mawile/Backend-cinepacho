@@ -10,11 +10,11 @@ from app.infrastructure.models.tipoSilla import TipoSilla
 TIPOS_SILLA = [
     {
         "nombre": "GENERAL",
-        "precio": 15000
+        "precio": 11000
     },
     {
         "nombre": "PREFERENCIAL",
-        "precio": 25000
+        "precio": 15000
     }
 ]
 

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from sqlalchemy import select
 
 from fastapi import APIRouter, Depends, HTTPException

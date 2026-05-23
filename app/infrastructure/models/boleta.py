@@ -18,7 +18,7 @@ class Boleta(Base):
     sillaId = Column(Integer, ForeignKey("sillas.id"), nullable=False)
 
     funcion = relationship("Funcion", back_populates="boletas")
-    silla = relationship("Silla")
+    silla = relationship("Silla", back_populates="boletas")
 
     detalle = relationship("DetalleFactura", back_populates="boleta", uselist=False)
 

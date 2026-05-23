@@ -15,7 +15,7 @@ from app.infrastructure.models.silla import Silla
 from app.infrastructure.models.detalleFactura import DetalleFactura
 from app.api.schemas.compra import DisponibilidadSillaResponse
 from app.domain.services.checkout_service import CheckoutService
-from app.api.compras.compras import get_checkout_service
+from app.api.routers.compras_router import get_checkout_service
 
 router = APIRouter(prefix="/api/v1", tags=["Sillas"])
 

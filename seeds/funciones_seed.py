@@ -1,85 +1,260 @@
 """Seed data for funciones."""
 
 from datetime import datetime, timedelta
+
 from sqlalchemy import select
+
 from app.database import SessionLocal
+
 from app.infrastructure.models.funcion import Funcion
 from app.infrastructure.models.sala import Sala
 from app.infrastructure.models.pelicula import Pelicula
-from app.infrastructure.models.multiplex_cartelera import MultiplexCartelera
+from app.infrastructure.models.multiplex_cartelera import (
+    MultiplexCartelera
+)
+
+
+HORARIOS_BASE = [
+    (11, 0),
+    (14, 0),
+    (17, 0),
+    (20, 0),
+]
+
+DIAS_GENERAR = 3
+
+MINUTOS_LIMPIEZA = 20
+
+
+def function_exists(
+    db,
+    sala_id,
+    fecha_inicio
+):
+
+    existing = db.execute(
+        select(Funcion).where(
+            Funcion.salaId == sala_id,
+            Funcion.fechaHora == fecha_inicio
+        )
+    ).scalar_one_or_none()
+
+    return existing is not None
+
+
+def has_overlap(
+    db,
+    sala_id,
+    fecha_inicio,
+    fecha_fin
+):
+
+    funciones = db.execute(
+        select(Funcion).where(
+            Funcion.salaId == sala_id
+        )
+    ).scalars().all()
+
+    for funcion in funciones:
+
+        overlap = (
+            fecha_inicio < funcion.fechaHoraFin
+            and
+            fecha_fin > funcion.fechaHora
+        )
+
+        if overlap:
+            return True
+
+    return False
+
+
+def create_funcion_if_valid(
+    db,
+    pelicula,
+    sala,
+    fecha_inicio
+):
+
+    fecha_fin = (
+        fecha_inicio
+        + timedelta(
+            minutes=(
+                pelicula.duracionMinutos
+                + MINUTOS_LIMPIEZA
+            )
+        )
+    )
+
+    # Evitar traslapes
+
+    if has_overlap(
+        db,
+        sala.id,
+        fecha_inicio,
+        fecha_fin
+    ):
+        return False
+
+    # Evitar duplicados exactos
+
+    if function_exists(
+        db,
+        sala.id,
+        fecha_inicio
+    ):
+        return False
+
+    # Evitar funciones muy tarde
+
+    if fecha_fin.hour >= 23:
+        return False
+
+    funcion = Funcion(
+        peliculaId=pelicula.id,
+        salaId=sala.id,
+        fechaHora=fecha_inicio,
+        fechaHoraFin=fecha_fin,
+        estaActiva=True
+    )
+
+    db.add(funcion)
+
+    return True
+
+
+def validate_integrity(db):
+
+    funciones = db.execute(
+        select(Funcion)
+    ).scalars().all()
+
+    for funcion in funciones:
+
+        if funcion.fechaHoraFin <= funcion.fechaHora:
+
+            raise Exception(
+                f"Función inválida ID "
+                f"{funcion.id}"
+            )
+
+    print("✅ Validación funciones completada")
 
 
 def run():
-    """
-    Crea funciones para los próximos 3 días.
-    Cada sala del multiplex tendrá funciones rotando entre las películas de su cartelera.
-    Idempotente: no duplica registros.
-    """
+
     with SessionLocal() as db:
+
         try:
-            existing = db.execute(select(Funcion).limit(1)).scalar_one_or_none()
-            if existing:
-                print("✔ Seed funciones: ya existen registros, omitiendo.")
-                return
 
-            salas = db.execute(select(Sala).where(Sala.estaActiva == True)).scalars().all()
+            print(
+                "\n🎬 Iniciando seed funciones...\n"
+            )
+
+            salas = db.execute(
+                select(Sala).where(
+                    Sala.estaActiva == True
+                )
+            ).scalars().all()
+
             if not salas:
-                print("✗ Seed funciones: no hay salas activas.")
-                return
 
-            # Horarios base para cada día (hora de inicio)
-            HORARIOS = ["11:00", "13:30", "16:00", "18:30", "21:00"]
+                raise Exception(
+                    "No existen salas activas"
+                )
 
-            hoy = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            hoy = datetime.now().replace(
+                hour=0,
+                minute=0,
+                second=0,
+                microsecond=0
+            )
+
             count = 0
 
             for sala in salas:
-                # Obtener películas en cartelera de este multiplex
+
                 cartelera = db.execute(
                     select(MultiplexCartelera).where(
-                        MultiplexCartelera.multiplexId == sala.multiplexId
+                        MultiplexCartelera.multiplexId
+                        == sala.multiplexId
                     )
                 ).scalars().all()
 
                 if not cartelera:
                     continue
 
-                peliculas_ids = [c.peliculaId for c in cartelera]
+                peliculas_ids = [
+                    c.peliculaId
+                    for c in cartelera
+                ]
+
                 peliculas = db.execute(
-                    select(Pelicula).where(Pelicula.id.in_(peliculas_ids))
+                    select(Pelicula).where(
+                        Pelicula.id.in_(peliculas_ids),
+                        Pelicula.estaActiva == True
+                    )
                 ).scalars().all()
 
                 if not peliculas:
                     continue
 
-                for dia in range(3):  # Hoy, mañana, pasado
+                pelicula_index = 0
+
+                for dia in range(DIAS_GENERAR):
+
                     fecha_base = hoy + timedelta(days=dia)
 
-                    for i, horario_str in enumerate(HORARIOS):
-                        hora, minuto = map(int, horario_str.split(":"))
-                        pelicula = peliculas[i % len(peliculas)]
+                    for hora, minuto in HORARIOS_BASE:
 
-                        fecha_inicio = fecha_base.replace(hour=hora, minute=minuto)
-                        fecha_fin = fecha_inicio + timedelta(minutes=pelicula.duracionMinutos)
+                        pelicula = peliculas[
+                            pelicula_index % len(peliculas)
+                        ]
 
-                        funcion = Funcion(
-                            peliculaId=pelicula.id,
-                            salaId=sala.id,
-                            fechaHora=fecha_inicio,
-                            fechaHoraFin=fecha_fin,
-                            estaActiva=True,
+                        pelicula_index += 1
+
+                        fecha_inicio = fecha_base.replace(
+                            hour=hora,
+                            minute=minuto
                         )
-                        db.add(funcion)
-                        count += 1
+
+                        creada = create_funcion_if_valid(
+                            db,
+                            pelicula,
+                            sala,
+                            fecha_inicio
+                        )
+
+                        if creada:
+
+                            count += 1
+
+                            print(
+                                f"✅ Sala {sala.numero} | "
+                                f"{pelicula.titulo} | "
+                                f"{fecha_inicio}"
+                            )
 
             db.commit()
-            print(f"✔ Seed funciones: {count} funciones creadas.")
+
+            validate_integrity(db)
+
+            print(
+                f"\n✅ Seed funciones completado "
+                f"({count} funciones creadas)\n"
+            )
 
         except Exception as e:
+
             db.rollback()
-            print(f"✗ Error en seed funciones: {e}")
-            raise
+
+            print(
+                f"\n❌ Error seed funciones:\n{e}"
+            )
+
+            raise e
 
 
 if __name__ == "__main__":
+
     run()

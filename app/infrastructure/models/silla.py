@@ -1,10 +1,11 @@
 """Silla model."""
-from sqlalchemy import Column, Integer, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, ForeignKey, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
 from .base import Base
 
 class Silla(Base):
     __tablename__ = "sillas"
+    __table_args__ = (UniqueConstraint("fila", "columna", "salaId", name="uq_silla_sala"),)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     
@@ -17,6 +18,8 @@ class Silla(Base):
 
     tipoSillaId = Column(Integer, ForeignKey("tipoSilla.id"), nullable=False)
     tipoSilla = relationship("TipoSilla")
+
+    boletas = relationship("Boleta", back_populates="silla")
 
     @property
     def tipo_silla(self) -> str | None:
