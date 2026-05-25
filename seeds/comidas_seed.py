@@ -12,22 +12,27 @@ COMIDAS_DATA = [
 
     {
         "nombre": "Pop Corn Sal Pequeño",
+        "descripcion": "Crispetas saladas tamaño pequeño.",
         "precio": 12000,
     },
     {
         "nombre": "Pop Corn Sal Mediano",
+        "descripcion": "Crispetas saladas tamaño mediano.",
         "precio": 16000,
     },
     {
         "nombre": "Pop Corn Sal Grande",
+        "descripcion": "Crispetas saladas tamaño grande.",
         "precio": 22000,
     },
     {
         "nombre": "Pop Corn Dulce Pequeño",
+        "descripcion": "Crispetas dulces tamaño pequeño.",
         "precio": 13000,
     },
     {
         "nombre": "Pop Corn Mixto Grande",
+        "descripcion": "Crispetas mitad sal mitad dulce tamaño grande.",
         "precio": 24000,
     },
 
@@ -35,14 +40,17 @@ COMIDAS_DATA = [
 
     {
         "nombre": "Gaseosa Pequeña",
+        "descripcion": "Gaseosa en vaso pequeño con hielo.",
         "precio": 8000,
     },
     {
         "nombre": "Gaseosa Mediana",
+        "descripcion": "Gaseosa en vaso mediano con hielo.",
         "precio": 10000,
     },
     {
         "nombre": "Gaseosa Grande",
+        "descripcion": "Gaseosa en vaso grande con hielo.",
         "precio": 12000,
     },
 
@@ -50,10 +58,12 @@ COMIDAS_DATA = [
 
     {
         "nombre": "Hot Dog Tradicional",
+        "descripcion": "Perro caliente con salsa de tomate y mostaza.",
         "precio": 15000,
     },
     {
         "nombre": "Hot Dog Especial",
+        "descripcion": "Perro caliente con papas, queso y salsas especiales.",
         "precio": 19000,
     },
 
@@ -61,6 +71,7 @@ COMIDAS_DATA = [
 
     {
         "nombre": "Nachos con Queso",
+        "descripcion": "Nachos crujientes bañados en salsa de queso caliente.",
         "precio": 18000,
     },
 
@@ -68,10 +79,12 @@ COMIDAS_DATA = [
 
     {
         "nombre": "M&M's",
+        "descripcion": "Chocolates de colores M&M's tamaño individual.",
         "precio": 9000,
     },
     {
         "nombre": "Chocolatina Jumbo",
+        "descripcion": "Chocolatina Jumbo tamaño normal.",
         "precio": 7000,
     },
 
@@ -79,6 +92,7 @@ COMIDAS_DATA = [
 
     {
         "nombre": "Agua Botella",
+        "descripcion": "Agua mineral en botella 500ml.",
         "precio": 6000,
     },
 ]

@@ -17,11 +17,13 @@ class ComidaRepository:
         self,
         nombre: str,
         precio: float,
+        descripcion: str | None = None,
         imagenUrl: str | None = None
     ) -> Comida:
 
         comida = Comida(
             nombre=nombre,
+            descripcion=descripcion,
             precio=precio,
             imagenUrl=imagenUrl
         )
