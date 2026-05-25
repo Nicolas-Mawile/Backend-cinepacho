@@ -39,7 +39,8 @@ class ComidaService:
 
         return self.repository.create(
             nombre=data.nombre,
-            precio=data.precio
+            precio=data.precio,
+            imagenUrl=data.imagenUrl
         )
 
     # --------------------------------

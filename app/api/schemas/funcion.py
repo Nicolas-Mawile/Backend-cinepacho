@@ -14,6 +14,10 @@ class FuncionCreate(BaseModel):
     fechaHora: datetime
 
 
+class FuncionEstadoUpdate(BaseModel):
+    estaActiva: bool
+
+
 class FuncionUpdate(BaseModel):
     peliculaId: int | None = None
     salaId: int | None = None

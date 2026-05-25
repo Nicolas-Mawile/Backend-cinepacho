@@ -10,6 +10,8 @@ class ComidaBase(BaseModel):
 
     precio: float = Field(gt=0)
 
+    imagenUrl: str | None = None
+
 
 class ComidaCreate(ComidaBase):
     pass
@@ -27,6 +29,8 @@ class ComidaUpdate(BaseModel):
         default=None,
         gt=0
     )
+
+    imagenUrl: str | None = None
 
 
 class ComidaResponse(ComidaBase):

@@ -146,6 +146,12 @@ class FuncionService:
         funcion = self.repo.get(funcion_id)
         if not funcion:
             raise FuncionNotFoundError("Funcion no encontrada")
-        if self.repo.tiene_boletas(funcion_id):
-            raise FuncionValidationError("No se puede eliminar: la funcion tiene boletas vendidas")
-        return self.repo.delete(funcion_id)
+        actualizada = self.repo.update(funcion_id, {"estaActiva": False})
+        return actualizada is not None
+
+    def cambiar_estado(self, funcion_id: int, estaActiva: bool) -> Funcion:
+        funcion = self.repo.get(funcion_id)
+        if not funcion:
+            raise FuncionNotFoundError("Funcion no encontrada")
+        actualizada = self.repo.update(funcion_id, {"estaActiva": estaActiva})
+        return self.repo.get_detallada(actualizada.id) if actualizada else None

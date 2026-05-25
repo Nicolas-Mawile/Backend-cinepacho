@@ -1,16 +1,16 @@
 """Alembic migration script template."""
-"""refactor_tablas_facturacion_y_snacks
+"""inicio BD
 
-Revision ID: 8dafc8742529
+Revision ID: 224a40b3e3be
 Revises: 
-Create Date: 2026-05-22 09:52:23.465257
+Create Date: 2026-05-25 05:12:27.115554
 """
 
 from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = '8dafc8742529'
+revision = '224a40b3e3be'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -34,7 +34,9 @@ def upgrade():
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('nombre', sa.String(), nullable=False),
     sa.Column('precio', sa.Float(), nullable=False),
-    sa.PrimaryKeyConstraint('id')
+    sa.Column('estaActiva', sa.Boolean(), nullable=False),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('nombre')
     )
     op.create_table('configuracion',
     sa.Column('clave', sa.String(), nullable=False),
@@ -69,7 +71,8 @@ def upgrade():
     sa.Column('linkPoster', sa.String(), nullable=True),
     sa.Column('sinopsis', sa.String(), nullable=True),
     sa.Column('estaActiva', sa.Boolean(), nullable=False),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('titulo')
     )
     op.create_table('permiso',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -109,18 +112,6 @@ def upgrade():
     sa.UniqueConstraint('codigoEmpleado'),
     sa.UniqueConstraint('correoLaboral')
     )
-    op.create_table('evaluaciones',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('comentario', sa.String(), nullable=False),
-    sa.Column('puntuacion', sa.Integer(), nullable=False),
-    sa.Column('cliente_id', sa.Integer(), nullable=False),
-    sa.Column('pelicula_id', sa.Integer(), nullable=True),
-    sa.Column('servicio_id', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['cliente_id'], ['clientes.id'], ),
-    sa.ForeignKeyConstraint(['pelicula_id'], ['peliculas.id'], ),
-    sa.ForeignKeyConstraint(['servicio_id'], ['servicios.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
     op.create_table('facturas',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('clienteId', sa.Integer(), nullable=True),
@@ -132,7 +123,17 @@ def upgrade():
     sa.Column('codigoTransaccion', sa.String(length=100), nullable=True),
     sa.Column('estadoFactura', sa.Enum('RESERVADA', 'PAGADA', 'CANCELADA', name='estadofacturaenum'), nullable=False),
     sa.ForeignKeyConstraint(['clienteId'], ['clientes.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('codigoTransaccion')
+    )
+    op.create_table('multiplex_cartelera',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('multiplexId', sa.Integer(), nullable=False),
+    sa.Column('peliculaId', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['multiplexId'], ['multiplex.id'], ),
+    sa.ForeignKeyConstraint(['peliculaId'], ['peliculas.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('multiplexId', 'peliculaId', name='uq_multiplex_pelicula')
     )
     op.create_table('rol_permiso',
     sa.Column('rol_id', sa.Integer(), nullable=False),
@@ -174,12 +175,13 @@ def upgrade():
     sa.Column('salaId', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['peliculaId'], ['peliculas.id'], ),
     sa.ForeignKeyConstraint(['salaId'], ['salas.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('salaId', 'fechaHora', name='uq_sala_fecha_inicio')
     )
     op.create_table('pagos',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('monto', sa.Float(), nullable=False),
-    sa.Column('estado', sa.Enum('PENDIENTE', 'APROBADO', 'EXPIRADO', 'CANCELADO', name='estadopagoenum'), nullable=False),
+    sa.Column('estado', sa.Enum('PENDIENTE', 'PAGADO', 'EXPIRADO', 'CANCELADO', name='estadopagoenum'), nullable=False),
     sa.Column('metodoPago', sa.String(), nullable=False),
     sa.Column('fechaPago', sa.DateTime(), nullable=True),
     sa.Column('fechaExpiracion', sa.DateTime(), nullable=False),
@@ -196,7 +198,8 @@ def upgrade():
     sa.Column('tipoSillaId', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['salaId'], ['salas.id'], ),
     sa.ForeignKeyConstraint(['tipoSillaId'], ['tipoSilla.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('fila', 'columna', 'salaId', name='uq_silla_sala')
     )
     op.create_table('usuarios',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
@@ -222,8 +225,25 @@ def upgrade():
     sa.Column('sillaId', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['funcionId'], ['funciones.id'], ),
     sa.ForeignKeyConstraint(['sillaId'], ['sillas.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('evaluaciones',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('comentario', sa.String(), nullable=False),
+    sa.Column('puntuacion', sa.Integer(), nullable=False),
+    sa.Column('cliente_id', sa.Integer(), nullable=False),
+    sa.Column('pelicula_id', sa.Integer(), nullable=True),
+    sa.Column('funcion_id', sa.Integer(), nullable=True),
+    sa.Column('servicio_id', sa.Integer(), nullable=True),
+    sa.Column('factura_id', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['cliente_id'], ['clientes.id'], ),
+    sa.ForeignKeyConstraint(['factura_id'], ['facturas.id'], ),
+    sa.ForeignKeyConstraint(['funcion_id'], ['funciones.id'], ),
+    sa.ForeignKeyConstraint(['pelicula_id'], ['peliculas.id'], ),
+    sa.ForeignKeyConstraint(['servicio_id'], ['servicios.id'], ),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('funcionId', 'sillaId', name='uq_boleta_funcion_silla')
+    sa.UniqueConstraint('cliente_id', 'factura_id', 'servicio_id', name='uq_cliente_factura_servicio'),
+    sa.UniqueConstraint('cliente_id', 'funcion_id', 'pelicula_id', name='uq_cliente_funcion_pelicula')
     )
     op.create_table('historial_cargos',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
@@ -271,6 +291,7 @@ def downgrade():
     op.drop_table('detalle_facturas')
     op.drop_table('refreshtoken')
     op.drop_table('historial_cargos')
+    op.drop_table('evaluaciones')
     op.drop_table('boletas')
     op.drop_table('usuarios')
     op.drop_table('sillas')
@@ -279,8 +300,8 @@ def downgrade():
     op.drop_table('contratos')
     op.drop_table('salas')
     op.drop_table('rol_permiso')
+    op.drop_table('multiplex_cartelera')
     op.drop_table('facturas')
-    op.drop_table('evaluaciones')
     op.drop_table('empleados')
     op.drop_table('tipoSilla')
     op.drop_table('servicios')
