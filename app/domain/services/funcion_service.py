@@ -1,6 +1,6 @@
 """Servicio de funciones."""
 
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 from app.domain.exceptions import (
     FuncionNotFoundError,
@@ -11,6 +11,7 @@ from app.domain.exceptions import (
 from app.api.schemas.funcion import FuncionCreate, FuncionUpdate
 from app.infrastructure.models.funcion import Funcion
 from app.infrastructure.repositories.funcion_repository import FuncionRepository
+from app.infrastructure.models.EstadoFacturaEnum import EstadoFacturaEnum
 
 
 class FuncionService:
@@ -65,6 +66,44 @@ class FuncionService:
         if not self.repo.get_pelicula(pelicula_id):
             raise FuncionNotFoundError("Pelicula no encontrada")
         return self.repo.listar_por_pelicula_y_multiplex(multiplex_id, pelicula_id)
+    
+    def obtener_por_id(self, funcion_id: int):
+        funcion = self.repo.get_by_id(funcion_id)
+
+        if not funcion:
+            raise FuncionNotFoundError("Función no encontrada")
+
+        sillas_response = []
+        for silla in funcion.sala.sillas:
+            boleta_activa = None
+            for boleta in silla.boletas:
+                if boleta.funcionId != funcion.id:
+                    continue
+                detalle = boleta.detalle
+                if detalle:
+                    factura = detalle.factura
+                    # PAGADA -> ocupada
+                    if factura.estadoFactura == EstadoFacturaEnum.PAGADA:
+                        boleta_activa = "OCUPADA"
+                    # RESERVADA y no expirada
+                    elif (factura.estadoFactura == EstadoFacturaEnum.RESERVADA and factura.fechaExpiracionReserva > datetime.utcnow()):
+                        boleta_activa = "RESERVADA"
+            estado = boleta_activa or "DISPONIBLE"
+            sillas_response.append({"sillaId": silla.id,
+                                    "fila": silla.fila,
+                                    "columna": silla.columna,
+                                    "tipo": silla.tipoSilla.nombre if silla.tipoSilla else None,
+                                    "estado": estado,})
+
+        return {"id": funcion.id,
+                "peliculaId": funcion.peliculaId,
+                "salaId": funcion.salaId,
+                "fechaHora": funcion.fechaHora,
+                "fechaHoraFin": funcion.fechaHoraFin,
+                "estaActiva": funcion.estaActiva,
+                "pelicula": funcion.pelicula,
+                "sala": funcion.sala,
+                "sillas": sillas_response,}
 
     def editar_funcion(self, funcion_id: int, data: FuncionUpdate) -> Funcion:
         funcion = self.repo.get(funcion_id)

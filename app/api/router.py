@@ -1,5 +1,6 @@
 """Central API router registration."""
 from fastapi import APIRouter
+
 from app.api.routers.multiplex_router import router as multiplex_router
 from app.api.routers.salas_router import router as salas_router
 from app.api.routers.peliculas_router import router as peliculas_router
@@ -9,7 +10,8 @@ from app.api.routers.auth_router import router as auth_router
 from app.api.routers.empleados_router import router as empleados_router
 from app.api.routers.compras_router import router as compras_router
 from app.api.routers.comida_router import router as comidas_router
-# Router principal
+from app.api.routers.evaluacion_router import router as evaluacion_router
+
 router = APIRouter()
 
 router.include_router(multiplex_router)
@@ -21,3 +23,4 @@ router.include_router(cartelera_router)
 router.include_router(auth_router)
 router.include_router(empleados_router)
 router.include_router(comidas_router)
+router.include_router(evaluacion_router)

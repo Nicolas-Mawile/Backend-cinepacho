@@ -1,10 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
 from app.infrastructure.models.factura import Factura
 from app.infrastructure.models.EstadoFacturaEnum import EstadoFacturaEnum
-
 
 class FacturaRepository:
 
@@ -36,7 +35,7 @@ class FacturaRepository:
             self.db.query(Factura)
             .filter(
                 Factura.estadoFactura == EstadoFacturaEnum.RESERVADA,
-                Factura.fechaExpiracionReserva < datetime.utcnow()
+                Factura.fechaExpiracionReserva < datetime.now(timezone.utc)
             )
             .all()
         )

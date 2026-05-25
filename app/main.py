@@ -59,16 +59,10 @@ async def lifespan(app: FastAPI):
 
     try:
 
-        from seeds.multiplex_seed import (
-            run as seed_multiplex
-        )
+        from seeds.seed_master import run as seed_all
+        from seeds.configuracion import run as seed_config
 
-        from seeds.configuracion import (
-            run as seed_config
-        )
-
-        seed_multiplex()
-
+        seed_all()
         seed_config()
 
     except Exception as e:

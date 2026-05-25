@@ -1,5 +1,5 @@
 """Empleado domain service."""
-from datetime import date
+from datetime import date, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from app.infrastructure.models.cliente import Cliente
@@ -14,7 +14,8 @@ from app.infrastructure.repositories.empleado_repository import (EmpleadoReposit
 from app.infrastructure.repositories.usuarioRepository import (UsuarioRepository)
 from app.domain.services.auth_service import (AuthService)
 import unicodedata
-
+from app.infrastructure.models.historial_cargo import (HistorialCargo)
+from app.domain.services.contrato_service import ContratoService
 class EmpleadoService:
 
     def __init__(self, db: Session):
@@ -196,3 +197,168 @@ class EmpleadoService:
             }
         }
     
+    def cambiarCargoEmpleado(
+    self,
+    empleadoId: int,
+    cargoNuevo: CargoEnum,
+    salarioNuevo: float | None,
+    motivo: str | None,
+    usuarioAdministradorId: int | None = None
+):
+
+        # ======================================
+        # BUSCAR EMPLEADO
+        # ======================================
+
+        stmt = (
+            select(Empleado)
+            .where(Empleado.id == empleadoId)
+        )
+
+        empleado = (
+            self.db.execute(stmt)
+            .scalar_one_or_none()
+        )
+
+        if not empleado:
+            raise ValueError(
+                "Empleado no encontrado"
+            )
+
+        # ======================================
+        # CONTRATO ACTIVO
+        # ======================================
+
+        contratoActual = empleado.contratoActivo
+
+        if not contratoActual:
+            raise ValueError(
+                "El empleado no tiene contrato activo"
+            )
+
+        # ======================================
+        # VALIDAR 3 MESES
+        # ======================================
+
+        hoy = date.today()
+
+        diasTranscurridos = (
+            hoy - contratoActual.fechaInicio
+        ).days
+
+        if diasTranscurridos < 90:
+
+            raise ValueError(
+                "El cargo solo puede cambiarse "
+                "después de 3 meses"
+            )
+
+        # ======================================
+        # VALIDAR CAMBIO REAL
+        # ======================================
+
+        if contratoActual.cargo == cargoNuevo:
+
+            raise ValueError(
+                "El empleado ya tiene ese cargo"
+            )
+
+        # ======================================
+        # FINALIZAR CONTRATO ACTUAL
+        # ======================================
+
+        contratoActual.fechaFin = hoy
+        contratoActual.activo = False
+
+        # ======================================
+        # NUEVO SALARIO
+        # ======================================
+
+        salarioFinal = (
+            salarioNuevo
+            if salarioNuevo is not None
+            else float(contratoActual.salario)
+        )
+
+        # ======================================
+        # CREAR NUEVO CONTRATO
+        # ======================================
+
+        nuevoContrato = Contrato(
+            empleadoId=empleado.id,
+            multiplexId=contratoActual.multiplexId,
+            cargo=cargoNuevo,
+            salario=salarioFinal,
+            fechaInicio=hoy,
+            activo=True
+        )
+
+        self.db.add(nuevoContrato)
+
+        # ======================================
+        # ACTUALIZAR ROL
+        # ======================================
+
+        nuevoRol = (
+            self.obtenerRolSegunCargo(
+                cargoNuevo
+            )
+        )
+
+        usuarioEmpleado = empleado.usuario
+
+        if not usuarioEmpleado:
+
+            raise ValueError(
+                "El empleado no tiene usuario"
+            )
+
+        usuarioEmpleado.rolId = nuevoRol.id
+
+        # ======================================
+        # HISTORIAL
+        # ======================================
+
+        historial = HistorialCargo(
+            empleadoId=empleado.id,
+            cargoAnterior=contratoActual.cargo,
+            cargoNuevo=cargoNuevo,
+            multiplexId=contratoActual.multiplexId,
+            motivo=motivo,
+            registradoPorId=usuarioAdministradorId
+        )
+
+        self.db.add(historial)
+
+        # ======================================
+        # COMMIT
+        # ======================================
+
+        self.db.commit()
+
+        self.db.refresh(empleado)
+
+        # ======================================
+        # RESPONSE
+        # ======================================
+
+        return {
+            "mensaje": (
+                "Cargo actualizado correctamente"
+            ),
+            "empleado": {
+                "id": empleado.id,
+                "nombre": (
+                    f"{empleado.nombres} "
+                    f"{empleado.apellidos}"
+                ),
+                "cargoAnterior": (
+                    contratoActual.cargo.value
+                ),
+                "cargoNuevo": (
+                    cargoNuevo.value
+                ),
+                "salarioNuevo": salarioFinal
+            }
+        }
+        

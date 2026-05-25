@@ -86,3 +86,17 @@ class CambiarEstadoEmpleadoRequest(BaseModel):
     Request para activar/desactivar empleado.
     """
     activo: bool
+
+class CambiarCargoEmpleadoRequest(BaseModel):
+
+    cargoNuevo: CargoEnum
+
+    salarioNuevo: float | None = Field(
+        default=None,
+        gt=0
+    )
+
+    motivo: str | None = Field(
+        default=None,
+        max_length=255
+    )

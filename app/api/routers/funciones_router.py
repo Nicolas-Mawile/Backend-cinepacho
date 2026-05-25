@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import requirePermission
-from app.api.schemas.funcion import FuncionCreate, FuncionResponse, FuncionUpdate
+from app.api.schemas.funcion import FuncionCreate, FuncionResponse, FuncionUpdate, FuncionDetalleResponse
 from app.database import get_db
 from app.domain.exceptions import (
     FuncionNotFoundError,
@@ -62,6 +62,14 @@ def funciones_por_pelicula(
     service = FuncionService(db)
     try:
         return service.listar_por_pelicula(pelicula_id)
+    except Exception as exc:
+        _map_funcion_error(exc)
+
+@router.get("/funciones/{id}", response_model=FuncionDetalleResponse,)
+def obtener_funcion_por_id(id: int, db: Session = Depends(get_db),):
+    service = FuncionService(db)
+    try:
+        return service.obtener_por_id(id)
     except Exception as exc:
         _map_funcion_error(exc)
 

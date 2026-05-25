@@ -4,7 +4,7 @@ from fastapi import (APIRouter, Depends, HTTPException, Query)
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.api.dependencies import (requirePermission)
-from app.api.schemas.empleado import (CambiarEstadoEmpleadoRequest, EmpleadoCrearRequest, EmpleadoDetalle, EmpleadoListElement)
+from app.api.schemas.empleado import (CambiarEstadoEmpleadoRequest, EmpleadoCrearRequest, EmpleadoDetalle, EmpleadoListElement, CambiarCargoEmpleadoRequest)
 from app.infrastructure.repositories.empleado_repository import (EmpleadoRepository)
 from app.domain.services.empleado_service import (EmpleadoService)
 from app.infrastructure.models.usuario import Usuario
@@ -69,3 +69,14 @@ def cambiar_estado_empleado(id: int, activo: bool, repo: EmpleadoRepository = De
             "activo": empleado.activo
         }
     }
+
+@router.patch("/{id}/cargo", summary="Cambiar cargo de empleado")
+def cambiar_cargo_empleado(id: int, data: CambiarCargoEmpleadoRequest, repo: EmpleadoRepository = Depends(get_repository),
+                           usuario: Usuario = Depends(requirePermission("actualizar-empleado"))):
+
+    service = EmpleadoService(repo.db)
+    try:
+        return service.cambiarCargoEmpleado(empleadoId=id, cargoNuevo=data.cargoNuevo, salarioNuevo=data.salarioNuevo, 
+                                            motivo=data.motivo, usuarioAdministradorId=usuario.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

@@ -47,3 +47,33 @@ class FuncionResponse(BaseModel):
         "from_attributes": True,
         "populate_by_name": True,
     }
+
+class SillaDisponibilidadResponse(BaseModel):
+    sillaId: int
+    fila: int
+    columna: int
+    tipo: str | None = None
+    estado: str
+
+    model_config = {
+        "from_attributes": True,
+    }
+
+
+class FuncionDetalleResponse(BaseModel):
+    id: int
+    peliculaId: int
+    salaId: int
+    fechaHora: datetime
+    fechaHoraFin: datetime
+    activa: bool = Field(alias="estaActiva")
+
+    pelicula: PeliculaResponse
+    sala: SalaFuncionResponse
+
+    sillas: list[SillaDisponibilidadResponse]
+
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True,
+    }

@@ -277,12 +277,9 @@ def validateMultiplexAccess(
             )
         )
 
-    if empleado.multiplexId != multiplexId:
+    if contrato.multiplexId != multiplexId:
 
         raise HTTPException(
             status_code=403,
-            detail=(
-                "No autorizado "
-                "para este multiplex"
-            )
+            detail="No autorizado para este multiplex",
         )
