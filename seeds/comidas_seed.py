@@ -6,6 +6,15 @@ from app.database import SessionLocal
 from app.infrastructure.models.comida import Comida
 
 
+_IMG_POPCORN      = "https://yarbixjgzlbgnlpegxvp.supabase.co/storage/v1/object/public/images-cinepacho/comidas/1779706732373-mathrppn3e.png"
+_IMG_NACHOS       = "https://yarbixjgzlbgnlpegxvp.supabase.co/storage/v1/object/public/images-cinepacho/comidas/Nachos.png"
+_IMG_HOTDOG       = "https://yarbixjgzlbgnlpegxvp.supabase.co/storage/v1/object/public/images-cinepacho/comidas/Hot_dog.png"
+_IMG_GASEOSA      = "https://yarbixjgzlbgnlpegxvp.supabase.co/storage/v1/object/public/images-cinepacho/comidas/Bebida.png"
+_IMG_CHOCOLATINA  = "https://yarbixjgzlbgnlpegxvp.supabase.co/storage/v1/object/public/images-cinepacho/comidas/Chocolatina.png"
+_IMG_AGUA         = "https://yarbixjgzlbgnlpegxvp.supabase.co/storage/v1/object/public/images-cinepacho/comidas/Agua.jpg"
+_IMG_MYM          = "https://yarbixjgzlbgnlpegxvp.supabase.co/storage/v1/object/public/images-cinepacho/comidas/MyM.jpg"
+
+
 COMIDAS_DATA = [
 
     # POPCORN
@@ -14,26 +23,31 @@ COMIDAS_DATA = [
         "nombre": "Pop Corn Sal Pequeño",
         "descripcion": "Crispetas saladas tamaño pequeño.",
         "precio": 12000,
+        "imagenUrl": _IMG_POPCORN,
     },
     {
         "nombre": "Pop Corn Sal Mediano",
         "descripcion": "Crispetas saladas tamaño mediano.",
         "precio": 16000,
+        "imagenUrl": _IMG_POPCORN,
     },
     {
         "nombre": "Pop Corn Sal Grande",
         "descripcion": "Crispetas saladas tamaño grande.",
         "precio": 22000,
+        "imagenUrl": _IMG_POPCORN,
     },
     {
         "nombre": "Pop Corn Dulce Pequeño",
         "descripcion": "Crispetas dulces tamaño pequeño.",
         "precio": 13000,
+        "imagenUrl": _IMG_POPCORN,
     },
     {
         "nombre": "Pop Corn Mixto Grande",
         "descripcion": "Crispetas mitad sal mitad dulce tamaño grande.",
         "precio": 24000,
+        "imagenUrl": _IMG_POPCORN,
     },
 
     # GASEOSAS
@@ -42,16 +56,19 @@ COMIDAS_DATA = [
         "nombre": "Gaseosa Pequeña",
         "descripcion": "Gaseosa en vaso pequeño con hielo.",
         "precio": 8000,
+        "imagenUrl": _IMG_GASEOSA,
     },
     {
         "nombre": "Gaseosa Mediana",
         "descripcion": "Gaseosa en vaso mediano con hielo.",
         "precio": 10000,
+        "imagenUrl": _IMG_GASEOSA,
     },
     {
         "nombre": "Gaseosa Grande",
         "descripcion": "Gaseosa en vaso grande con hielo.",
         "precio": 12000,
+        "imagenUrl": _IMG_GASEOSA,
     },
 
     # PERROS
@@ -60,11 +77,13 @@ COMIDAS_DATA = [
         "nombre": "Hot Dog Tradicional",
         "descripcion": "Perro caliente con salsa de tomate y mostaza.",
         "precio": 15000,
+        "imagenUrl": _IMG_HOTDOG,
     },
     {
         "nombre": "Hot Dog Especial",
         "descripcion": "Perro caliente con papas, queso y salsas especiales.",
         "precio": 19000,
+        "imagenUrl": _IMG_HOTDOG,
     },
 
     # NACHOS
@@ -73,6 +92,7 @@ COMIDAS_DATA = [
         "nombre": "Nachos con Queso",
         "descripcion": "Nachos crujientes bañados en salsa de queso caliente.",
         "precio": 18000,
+        "imagenUrl": _IMG_NACHOS,
     },
 
     # DULCERÍA
@@ -81,11 +101,13 @@ COMIDAS_DATA = [
         "nombre": "M&M's",
         "descripcion": "Chocolates de colores M&M's tamaño individual.",
         "precio": 9000,
+        "imagenUrl": _IMG_MYM,
     },
     {
-        "nombre": "Chocolatina Jumbo",
-        "descripcion": "Chocolatina Jumbo tamaño normal.",
+        "nombre": "Chocolatina",
+        "descripcion": "Chocolatina tamaño normal.",
         "precio": 7000,
+        "imagenUrl": _IMG_CHOCOLATINA,
     },
 
     # AGUA
@@ -94,6 +116,7 @@ COMIDAS_DATA = [
         "nombre": "Agua Botella",
         "descripcion": "Agua mineral en botella 500ml.",
         "precio": 6000,
+        "imagenUrl": _IMG_AGUA,
     },
 ]
 
@@ -128,6 +151,8 @@ def create_or_update_comida(
     if comida:
 
         comida.precio = data["precio"]
+        comida.descripcion = data.get("descripcion")
+        comida.imagenUrl = data.get("imagenUrl")
 
         print(
             f"🔄 Comida actualizada: "

@@ -1,16 +1,16 @@
 """Alembic migration script template."""
 """inicio BD
 
-Revision ID: 224a40b3e3be
+Revision ID: 373a1182c4b7
 Revises: 
-Create Date: 2026-05-25 05:12:27.115554
+Create Date: 2026-05-25 06:22:05.616631
 """
 
 from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = '224a40b3e3be'
+revision = '373a1182c4b7'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -33,7 +33,9 @@ def upgrade():
     op.create_table('comidas',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('nombre', sa.String(), nullable=False),
+    sa.Column('descripcion', sa.String(), nullable=True),
     sa.Column('precio', sa.Float(), nullable=False),
+    sa.Column('imagenUrl', sa.String(), nullable=True),
     sa.Column('estaActiva', sa.Boolean(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('nombre')
