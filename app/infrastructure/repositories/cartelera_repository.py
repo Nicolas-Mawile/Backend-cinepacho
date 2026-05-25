@@ -114,6 +114,26 @@ class CarteleraRepository:
         result = self.db.execute(stmt)
         return list(result.scalars().all())
 
+    def tiene_funciones_activas(
+        self, pelicula_id: int, multiplex_id: int | None = None
+    ) -> bool:
+        from app.infrastructure.models.funcion import Funcion
+        from app.infrastructure.models.sala import Sala
+
+        stmt = (
+            select(Funcion)
+            .join(Sala, Sala.id == Funcion.salaId)
+            .where(
+                Funcion.peliculaId == pelicula_id,
+                Funcion.estaActiva == True,
+            )
+        )
+        if multiplex_id is not None:
+            stmt = stmt.where(Sala.multiplexId == multiplex_id)
+
+        result = self.db.execute(stmt.limit(1))
+        return result.scalar_one_or_none() is not None
+
     def eliminar_por_pelicula(self, pelicula_id: int) -> int:
         entradas = self.db.execute(
             select(MultiplexCartelera).where(MultiplexCartelera.peliculaId == pelicula_id)

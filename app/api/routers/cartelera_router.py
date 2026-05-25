@@ -17,7 +17,8 @@ def _map_cartelera_error(exc: Exception):
     if isinstance(exc, (MultiplexNotFoundError, CarteleraNotFoundError)):
         raise HTTPException(status_code=404, detail=str(exc))
     if isinstance(exc, CarteleraValidationError):
-        status_code = 409 if "ya esta" in str(exc).lower() else 400
+        tokens_409 = ["ya esta", "funciones activas"]
+        status_code = 409 if any(t in str(exc).lower() for t in tokens_409) else 400
         raise HTTPException(status_code=status_code, detail=str(exc))
     raise exc
 
