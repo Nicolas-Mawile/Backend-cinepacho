@@ -12,6 +12,10 @@ from app.infrastructure.repositories.pelicula_repository import (
     PeliculaRepository
 )
 
+from app.infrastructure.repositories.cartelera_repository import (
+    CarteleraRepository
+)
+
 
 class PeliculaService:
 
@@ -162,13 +166,22 @@ class PeliculaService:
             )
         )
 
-        pelicula.estaActiva = (
-            esta_activa
-        )
+        if not esta_activa:
 
-        self.repository.update(
-            pelicula
-        )
+            if self.repository.tiene_boletas(pelicula_id):
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "No se puede desactivar: la película "
+                        "tiene boletas asociadas a sus funciones"
+                    )
+                )
+
+            CarteleraRepository(self.db).eliminar_por_pelicula(pelicula_id)
+
+        pelicula.estaActiva = esta_activa
+
+        self.repository.update(pelicula)
 
         estado = (
             "activada"
@@ -180,6 +193,6 @@ class PeliculaService:
             "mensaje": (
                 f"Película {estado} "
                 f"correctamente"
-            ), 
+            ),
             "pelicula": pelicula
         }
