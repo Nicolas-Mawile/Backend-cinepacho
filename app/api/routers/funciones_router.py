@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import requirePermission
-from app.api.schemas.funcion import FuncionCreate, FuncionResponse, FuncionUpdate, FuncionDetalleResponse
+from app.api.schemas.funcion import FuncionCreate, FuncionResponse, FuncionUpdate, FuncionDetalleResponse, FuncionEstadoUpdate
 from app.database import get_db
 from app.domain.exceptions import (
     FuncionNotFoundError,
@@ -106,6 +106,20 @@ def eliminar_funcion(id: int, db: Session = Depends(get_db), _=Depends(requirePe
     service = FuncionService(db)
     try:
         service.eliminar_funcion(id)
-        return {"mensaje": "Funcion eliminada correctamente"}
+        return {"mensaje": "Funcion desactivada correctamente"}
+    except Exception as exc:
+        _map_funcion_error(exc)
+
+
+@router.patch("/funciones/{id}/estado", response_model=FuncionResponse)
+def cambiar_estado_funcion(
+    id: int,
+    data: FuncionEstadoUpdate,
+    db: Session = Depends(get_db),
+    _=Depends(requirePermission("cambiar-estado-funcion")),
+):
+    service = FuncionService(db)
+    try:
+        return service.cambiar_estado(id, data.estaActiva)
     except Exception as exc:
         _map_funcion_error(exc)

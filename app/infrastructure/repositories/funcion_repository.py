@@ -126,7 +126,10 @@ class FuncionRepository:
         stmt = (
             select(Funcion)
             .join(Sala, Sala.id == Funcion.salaId)
-            .where(Sala.multiplexId == multiplex_id)
+            .where(
+                Sala.multiplexId == multiplex_id,
+                Funcion.estaActiva == True,
+            )
             .order_by(Funcion.fechaHora)
         )
         return self._query_detallada(stmt)

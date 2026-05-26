@@ -96,6 +96,8 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     else:
         correo = usuario.empleado.correoLaboral
 
+    contrato = usuario.empleado.contratoActivo if usuario.empleado else None
+
     return {
         "access_token": accessToken,
         "token_type": "bearer",
@@ -106,7 +108,8 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
             "apellidos": usuario.apellidos,
             "rol": usuario.rol.nombre,
             "permisos": [permiso.nombre for permiso in usuario.rol.permisos],
-            "empleado_id": usuario.empleado.id if usuario.empleado else None
+            "empleado_id": usuario.empleado.id if usuario.empleado else None,
+            "multiplexId": contrato.multiplexId if contrato else None,
         }
     }
 
@@ -116,15 +119,20 @@ def me(user=Depends(get_current_user)):
     permisos = [permiso.nombre for permiso in user.rol.permisos]
     if user.cliente:
         correo = user.cliente.correo
-    else:        
+    else:
         correo = user.empleado.correoLaboral
+
+    contrato = user.empleado.contratoActivo if user.empleado else None
+
     return {
         "id": user.id,
         "nombres": user.nombres,
         "apellidos": user.apellidos,
         "correo": correo,
         "rol": user.rol.nombre,
-        "permisos": permisos
+        "permisos": permisos,
+        "empleado_id": user.empleado.id if user.empleado else None,
+        "multiplexId": contrato.multiplexId if contrato else None,
     }
 
 # def _buildUsuarioResponse(usuario: Usuario) -> dict:

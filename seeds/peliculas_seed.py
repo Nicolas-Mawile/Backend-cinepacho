@@ -11,7 +11,7 @@ PELICULAS_DATA = [
         "titulo": "Avengers: Doomsday",
         "duracionMinutos": 149,
         "linkTrailer": "https://www.youtube.com/watch?v=TcMBFSGVi1c",
-        "linkPoster": "https://image.tmdb.org/t/p/w500/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg",
+        "linkPoster": "https://yarbixjgzlbgnlpegxvp.supabase.co/storage/v1/object/public/images-cinepacho/peliculas/what-do-you-want-to-see-most-in-avengers-doomsday-v0-flc2pue4pdqf1.webp",
         "sinopsis": (
             "Los Vengadores enfrentan su mayor amenaza "
             "cuando el Doctor Doom reúne un ejército "
@@ -23,7 +23,7 @@ PELICULAS_DATA = [
         "titulo": "Misión Imposible: Sentencia Final",
         "duracionMinutos": 163,
         "linkTrailer": "https://www.youtube.com/watch?v=avz06PDqDbM",
-        "linkPoster": "https://image.tmdb.org/t/p/w500/placeholder2.jpg",
+        "linkPoster": "https://yarbixjgzlbgnlpegxvp.supabase.co/storage/v1/object/public/images-cinepacho/peliculas/1779571917517-o04wb3r42q7.jpg",
         "sinopsis": (
             "Ethan Hunt regresa en su misión más peligrosa "
             "para detener una inteligencia artificial "
@@ -35,7 +35,7 @@ PELICULAS_DATA = [
         "titulo": "El Señor de los Anillos: La Guerra de los Rohirrim",
         "duracionMinutos": 134,
         "linkTrailer": "https://www.youtube.com/watch?v=gCUg6Td5fgQ",
-        "linkPoster": "https://image.tmdb.org/t/p/w500/placeholder3.jpg",
+        "linkPoster": "https://yarbixjgzlbgnlpegxvp.supabase.co/storage/v1/object/public/images-cinepacho/peliculas/1779571744654-leu4c08z64.jpg",
         "sinopsis": (
             "La historia épica del rey Helm Hammerhand "
             "y la fundación del Abismo de Helm."
@@ -46,7 +46,7 @@ PELICULAS_DATA = [
         "titulo": "Sonic 3: La Película",
         "duracionMinutos": 110,
         "linkTrailer": "https://www.youtube.com/watch?v=qSu6i2iFMO0",
-        "linkPoster": "https://image.tmdb.org/t/p/w500/placeholder4.jpg",
+        "linkPoster": "https://yarbixjgzlbgnlpegxvp.supabase.co/storage/v1/object/public/images-cinepacho/peliculas/1779571755398-qbqd9ipjaz.webp",
         "sinopsis": (
             "Sonic, Tails y Knuckles se unen para "
             "enfrentar a Shadow."
@@ -57,10 +57,21 @@ PELICULAS_DATA = [
         "titulo": "Paddington en Perú",
         "duracionMinutos": 106,
         "linkTrailer": "https://www.youtube.com/watch?v=lKgitu25ZAg",
-        "linkPoster": "https://image.tmdb.org/t/p/w500/placeholder5.jpg",
+        "linkPoster": "https://yarbixjgzlbgnlpegxvp.supabase.co/storage/v1/object/public/images-cinepacho/peliculas/1779571771805-g081bkglaaf.jpg",
         "sinopsis": (
             "Paddington viaja a Perú para visitar "
             "a su querida tía Lucy."
+        ),
+        "estaActiva": True,
+    },
+    {
+        "titulo": "Umamusume",
+        "duracionMinutos": 140,
+        "linkTrailer": "https://www.youtube.com/watch?v=DkangOH4MOI",
+        "linkPoster": "https://yarbixjgzlbgnlpegxvp.supabase.co/storage/v1/object/public/images-cinepacho/peliculas/1779570790280-7rcy4dg7ojr.webp",
+        "sinopsis": (
+            "Sigue la historia de Jungle Pocket en el derby japones"
+            "en una competencia de atletismo."
         ),
         "estaActiva": True,
     },

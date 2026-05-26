@@ -8,6 +8,8 @@ class Comida(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     nombre = Column(String, nullable=False, unique=True)
+    descripcion = Column(String, nullable=True)
     precio = Column(Float, nullable=False)
+    imagenUrl = Column(String, nullable=True)
     estaActiva = Column(Boolean, default=True, nullable=False)
     detalles = relationship("DetalleFactura", back_populates="comida")

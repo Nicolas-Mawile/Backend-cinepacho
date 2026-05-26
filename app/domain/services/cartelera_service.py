@@ -44,6 +44,11 @@ class CarteleraService:
         if not multiplex:
             raise MultiplexNotFoundError("Multiplex no encontrado")
 
+        if self.repo.tiene_funciones_activas(pelicula_id, multiplex_id):
+            raise CarteleraValidationError(
+                "No se puede quitar la pelicula: tiene funciones activas en este multiplex"
+            )
+
         if not self.repo.eliminar_entrada(multiplex_id, pelicula_id):
             raise CarteleraNotFoundError("La pelicula no esta en la cartelera de este multiplex")
 
@@ -87,6 +92,11 @@ class CarteleraService:
         pelicula = self.repo.get_pelicula(pelicula_id)
         if not pelicula:
             raise CarteleraNotFoundError("Pelicula no encontrada")
+
+        if self.repo.tiene_funciones_activas(pelicula_id):
+            raise CarteleraValidationError(
+                "No se puede quitar la pelicula de la cartelera general: tiene funciones activas"
+            )
 
         eliminadas = self.repo.eliminar_por_pelicula(pelicula_id)
         if eliminadas == 0:

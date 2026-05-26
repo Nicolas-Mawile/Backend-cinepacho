@@ -16,12 +16,16 @@ class ComidaRepository:
     def create(
         self,
         nombre: str,
-        precio: float
+        precio: float,
+        descripcion: str | None = None,
+        imagenUrl: str | None = None
     ) -> Comida:
 
         comida = Comida(
             nombre=nombre,
-            precio=precio
+            descripcion=descripcion,
+            precio=precio,
+            imagenUrl=imagenUrl
         )
 
         self.db.add(comida)

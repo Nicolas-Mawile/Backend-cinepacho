@@ -8,7 +8,11 @@ class ComidaBase(BaseModel):
         max_length=100
     )
 
+    descripcion: str | None = None
+
     precio: float = Field(gt=0)
+
+    imagenUrl: str | None = None
 
 
 class ComidaCreate(ComidaBase):
@@ -23,10 +27,14 @@ class ComidaUpdate(BaseModel):
         max_length=100
     )
 
+    descripcion: str | None = None
+
     precio: float | None = Field(
         default=None,
         gt=0
     )
+
+    imagenUrl: str | None = None
 
 
 class ComidaResponse(ComidaBase):
