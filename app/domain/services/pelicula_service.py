@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 from app.infrastructure.models.pelicula import (
     Pelicula
 )
-
+from app.infrastructure.repositories.cartelera_repository import (
+    CarteleraRepository
+)
 from app.infrastructure.repositories.pelicula_repository import (
     PeliculaRepository
 )
@@ -28,6 +30,9 @@ class PeliculaService:
 
         self.repository = (
             PeliculaRepository(db)
+        )
+        self.cartelera_repository = (
+            CarteleraRepository(db)
         )
 
     # =====================================================
@@ -182,6 +187,9 @@ class PeliculaService:
         pelicula.estaActiva = esta_activa
 
         self.repository.update(pelicula)
+
+        if not esta_activa:
+            self.cartelera_repository.eliminar_por_pelicula(pelicula_id)
 
         estado = (
             "activada"

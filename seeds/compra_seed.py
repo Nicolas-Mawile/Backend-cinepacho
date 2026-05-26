@@ -159,7 +159,7 @@ def create_pago(
         metodoPago=random.choice(METODOS_PAGO),
         fechaPago=(
             datetime.now()
-            if estado == EstadoPagoEnum.APROBADO
+            if estado == EstadoPagoEnum.PAGADO
             else None
         ),
         fechaExpiracion=(
@@ -409,7 +409,7 @@ def run():
 
                 estado_pago = {
                     EstadoFacturaEnum.PAGADA:
-                        EstadoPagoEnum.APROBADO,
+                        EstadoPagoEnum.PAGADO,
 
                     EstadoFacturaEnum.RESERVADA:
                         EstadoPagoEnum.PENDIENTE,
