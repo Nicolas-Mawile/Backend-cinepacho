@@ -1,201 +1,75 @@
 """Servicio de películas."""
-
 from fastapi import HTTPException
-
 from sqlalchemy.orm import Session
-
-from app.infrastructure.models.pelicula import (
-    Pelicula
-)
-from app.infrastructure.repositories.cartelera_repository import (
-    CarteleraRepository
-)
-from app.infrastructure.repositories.pelicula_repository import (
-    PeliculaRepository
-)
-
-from app.infrastructure.repositories.cartelera_repository import (
-    CarteleraRepository
-)
-
+from app.infrastructure.models.pelicula import (Pelicula)
+from app.infrastructure.repositories.cartelera_repository import (CarteleraRepository)
+from app.infrastructure.repositories.pelicula_repository import (PeliculaRepository)
+from app.infrastructure.repositories.cartelera_repository import (CarteleraRepository)
 
 class PeliculaService:
-
-    def __init__(
-        self,
-        db: Session
-    ):
-
+    def __init__(self, db: Session):
         self.db = db
-
-        self.repository = (
-            PeliculaRepository(db)
-        )
-        self.cartelera_repository = (
-            CarteleraRepository(db)
-        )
+        self.repository = (PeliculaRepository(db))
+        self.cartelera_repository = (CarteleraRepository(db))
 
     # =====================================================
     # LISTAR
     # =====================================================
-
     def listar_peliculas(self):
-
-        return (
-            self.repository.get_all()
-        )
+        return (self.repository.get_all())
 
     # =====================================================
     # OBTENER
     # =====================================================
-
-    def obtener_pelicula(
-        self,
-        pelicula_id: int
-    ):
-
-        pelicula = (
-            self.repository.get_by_id(
-                pelicula_id
-            )
-        )
+    def obtener_pelicula(self, pelicula_id: int):
+        pelicula = (self.repository.get_by_id(pelicula_id))
 
         if not pelicula:
-
-            raise HTTPException(
-                status_code=404,
-                detail=(
-                    "Película no encontrada"
-                )
-            )
+            raise HTTPException(status_code=404, detail=("Película no encontrada"))
 
         return pelicula
 
     # =====================================================
     # CREAR
     # =====================================================
-
-    def crear_pelicula(
-        self,
-        data
-    ):
-
-        existe = (
-            self.repository
-            .exists_by_titulo(
-                data.titulo
-            )
-        )
+    def crear_pelicula(self, data):
+        existe = (self.repository.exists_by_titulo(data.titulo))
 
         if existe:
+            raise HTTPException(status_code=400, detail=("Ya existe una película con ese título"))
 
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "Ya existe una "
-                    "película con ese título"
-                )
-            )
+        pelicula = Pelicula(titulo=data.titulo,
+                            duracionMinutos=(data.duracionMinutos),
+                            linkTrailer=data.linkTrailer,
+                            linkPoster=data.linkPoster,
+                            sinopsis=data.sinopsis,
+                            estaActiva=True)
 
-        pelicula = Pelicula(
-
-            titulo=data.titulo,
-
-            duracionMinutos=(
-                data.duracionMinutos
-            ),
-
-            linkTrailer=data.linkTrailer,
-
-            linkPoster=data.linkPoster,
-
-            sinopsis=data.sinopsis,
-
-            estaActiva=True
-        )
-
-        return (
-            self.repository.create(
-                pelicula
-            )
-        )
+        return (self.repository.create(pelicula))
 
     # =====================================================
     # ACTUALIZAR
     # =====================================================
+    def actualizar_pelicula(self, pelicula_id: int, data):
+        pelicula = (self.obtener_pelicula(pelicula_id))
 
-    def actualizar_pelicula(
-        self,
-        pelicula_id: int,
-        data
-    ):
+        for key, value in (data.model_dump(exclude_none=True).items()):
+            setattr(pelicula, key, value)
 
-        pelicula = (
-            self.obtener_pelicula(
-                pelicula_id
-            )
-        )
-
-        for key, value in (
-            data.model_dump(
-                exclude_none=True
-            )
-            .items()
-        ):
-
-            setattr(
-                pelicula,
-                key,
-                value
-            )
-
-        return (
-            self.repository.update(
-                pelicula
-            )
-        )
+        return (self.repository.update(pelicula))
 
     # =====================================================
     # CAMBIAR ESTADO
     # =====================================================
-
-    def cambiar_estado_pelicula(
-        self,
-        pelicula_id: int,
-        esta_activa: bool
-    ):
-
-        pelicula = (
-            self.obtener_pelicula(
-                pelicula_id
-            )
-        )
-
-        if not esta_activa:
-
-            if self.repository.tiene_boletas(pelicula_id):
-                raise HTTPException(
-                    status_code=409,
-                    detail=(
-                        "No se puede desactivar: la película "
-                        "tiene boletas asociadas a sus funciones"
-                    )
-                )
-
-            CarteleraRepository(self.db).eliminar_por_pelicula(pelicula_id)
-
+    def cambiar_estado_pelicula(self, pelicula_id: int, esta_activa: bool):
+        pelicula = (self.obtener_pelicula(pelicula_id))
         pelicula.estaActiva = esta_activa
-
         self.repository.update(pelicula)
 
         if not esta_activa:
             self.cartelera_repository.eliminar_por_pelicula(pelicula_id)
 
-        estado = (
-            "activada"
-            if esta_activa
-            else "desactivada"
-        )
+        estado = ("activada" if esta_activa else "desactivada")
 
         return {
             "mensaje": (
