@@ -88,6 +88,7 @@ class CheckoutService:
         try:
             # Limpiar reservas expiradas antes de procesar
             self.cancelar_reservas_expiradas()
+            self.funcion_repository.desactivar_funciones_vencidas()
 
             tiene_sillas = len(silla_ids) > 0
             tiene_comidas = len(comidas) > 0
@@ -295,6 +296,7 @@ class CheckoutService:
     # =========================================================
 
     def obtener_disponibilidad(self, funcion_id: int):
+        self.funcion_repository.desactivar_funciones_vencidas()
         """Devuelve el estado de cada silla para una función."""
         funcion = self.funcion_repository.get_by_id(funcion_id)
         if not funcion:

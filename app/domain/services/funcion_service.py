@@ -46,21 +46,25 @@ class FuncionService:
         return self.repo.get_detallada(creada.id) or creada
 
     def listar_por_pelicula(self, pelicula_id: int):
+        self._actualizar_funciones_vencidas()
         if not self.repo.get_pelicula(pelicula_id):
             raise FuncionNotFoundError("Pelicula no encontrada")
         return self.repo.listar_por_pelicula(pelicula_id)
 
     def listar_por_multiplex(self, multiplex_id: int):
+        self._actualizar_funciones_vencidas()
         if not self.repo.get_multiplex(multiplex_id):
             raise MultiplexNotFoundError("Multiplex no encontrado")
         return self.repo.listar_por_multiplex(multiplex_id)
 
     def listar_por_sala(self, sala_id: int):
+        self._actualizar_funciones_vencidas()
         if not self.repo.get_sala(sala_id):
             raise SalaNotFoundError("Sala no encontrada")
         return self.repo.listar_por_sala(sala_id)
 
     def listar_por_pelicula_y_multiplex(self, multiplex_id: int, pelicula_id: int):
+        self._actualizar_funciones_vencidas()
         if not self.repo.get_multiplex(multiplex_id):
             raise MultiplexNotFoundError("Multiplex no encontrado")
         if not self.repo.get_pelicula(pelicula_id):
@@ -68,6 +72,7 @@ class FuncionService:
         return self.repo.listar_por_pelicula_y_multiplex(multiplex_id, pelicula_id)
     
     def obtener_por_id(self, funcion_id: int):
+        self._actualizar_funciones_vencidas()
         funcion = self.repo.get_by_id(funcion_id)
 
         if not funcion:
@@ -155,3 +160,6 @@ class FuncionService:
             raise FuncionNotFoundError("Funcion no encontrada")
         actualizada = self.repo.update(funcion_id, {"estaActiva": estaActiva})
         return self.repo.get_detallada(actualizada.id) if actualizada else None
+    
+    def _actualizar_funciones_vencidas(self):
+        self.repository.desactivar_funciones_vencidas()

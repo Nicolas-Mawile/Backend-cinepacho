@@ -1,30 +1,19 @@
 """Funcion repository."""
-from datetime import datetime
-
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session, selectinload
-from sqlalchemy import select, and_
-
+from sqlalchemy import select, and_, update
 from app.infrastructure.models.funcion import Funcion
 from app.infrastructure.models.multiplex_cartelera import MultiplexCartelera
 from app.infrastructure.models.pelicula import Pelicula
 from app.infrastructure.models.sala import Sala
-
 
 class FuncionRepository:
 
     def __init__(self, db: Session):
         self.db = db
 
-    def get_by_id(
-        self,
-        funcion_id: int
-    ):
-
-        return (
-            self.db.query(Funcion)
-            .filter(Funcion.id == funcion_id)
-            .first()
-        )
+    def get_by_id(self, funcion_id: int):
+        return (self.db.query(Funcion).filter(Funcion.id == funcion_id, Funcion.estaActiva == True).first())
 
     def add(self, entity: Funcion) -> Funcion:
         self.db.add(entity)
@@ -47,14 +36,10 @@ class FuncionRepository:
         return self.db.get(Funcion, entity_id)
 
     def get_detallada(self, entity_id: int) -> Funcion | None:
-        stmt = (
-            select(Funcion)
-            .options(
+        stmt = (select(Funcion).options(
                 selectinload(Funcion.pelicula),
                 selectinload(Funcion.sala).selectinload(Sala.multiplex),
-            )
-            .where(Funcion.id == entity_id)
-        )
+            ).where(Funcion.id == entity_id, Funcion.estaActiva == True))
         result = self.db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -89,9 +74,7 @@ class FuncionRepository:
                 Funcion.salaId == sala_id,
                 Funcion.estaActiva == True,
                 Funcion.fechaHora < fin,
-                Funcion.fechaHoraFin > inicio,
-            )
-        )
+                Funcion.fechaHoraFin > inicio, ))
         if excluir_id:
             stmt = stmt.where(Funcion.id != excluir_id)
         result = self.db.execute(stmt.limit(1))
@@ -107,7 +90,7 @@ class FuncionRepository:
         return list(result.scalars().all())
 
     def listar_por_pelicula(self, pelicula_id: int) -> list[Funcion]:
-        stmt = select(Funcion).where(Funcion.peliculaId == pelicula_id).order_by(Funcion.fechaHora)
+        stmt = select(Funcion).where(Funcion.peliculaId == pelicula_id, Funcion.estaActiva == True,).order_by(Funcion.fechaHora)
         return self._query_detallada(stmt)
 
     def listar_por_pelicula_y_multiplex(self, multiplex_id: int, pelicula_id: int) -> list[Funcion]:
@@ -117,6 +100,7 @@ class FuncionRepository:
             .where(
                 Sala.multiplexId == multiplex_id,
                 Funcion.peliculaId == pelicula_id,
+                Funcion.estaActiva == True,
             )
             .order_by(Funcion.fechaHora)
         )
@@ -135,7 +119,7 @@ class FuncionRepository:
         return self._query_detallada(stmt)
 
     def listar_por_sala(self, sala_id: int) -> list[Funcion]:
-        stmt = select(Funcion).where(Funcion.salaId == sala_id).order_by(Funcion.fechaHora)
+        stmt = select(Funcion).where(Funcion.salaId == sala_id, Funcion.estaActiva == True,).order_by(Funcion.fechaHora)
         return self._query_detallada(stmt)
 
     def tiene_boletas(self, funcion_id: int) -> bool:
@@ -155,3 +139,12 @@ class FuncionRepository:
             )
         )
         return result.scalar_one_or_none() is not None
+    
+    def desactivar_funciones_vencidas(self):
+        limite = datetime.now() - timedelta(minutes=20)
+
+        self.db.execute(update(Funcion).where(
+            Funcion.estaActiva == True, Funcion.fechaHora <= limite
+            ).values(estaActiva=False))
+
+        self.db.commit()

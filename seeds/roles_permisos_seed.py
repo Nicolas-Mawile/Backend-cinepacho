@@ -29,7 +29,8 @@ ROLE_PERMISSIONS = {
     # EMPLEADO OTRO
     # =====================================================
     "EMPLEADO-OTRO": [
-        "ver-hoja-vida"
+        "ver-hoja-vida",
+        "ver-detalle-empleado"
     ],
 
     # =====================================================
@@ -49,6 +50,7 @@ ROLE_PERMISSIONS = {
         "compra-boletas",
         "compra-snacks",
         "pagar-orden",
+        "ver-detalle-empleado",
         "ver-hoja-vida"
     ],
 
