@@ -162,4 +162,4 @@ class FuncionService:
         return self.repo.get_detallada(actualizada.id) if actualizada else None
     
     def _actualizar_funciones_vencidas(self):
-        self.repository.desactivar_funciones_vencidas()
+        self.repo.desactivar_funciones_vencidas()
