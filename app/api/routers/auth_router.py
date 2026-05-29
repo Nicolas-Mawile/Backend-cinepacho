@@ -110,6 +110,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
             "permisos": [permiso.nombre for permiso in usuario.rol.permisos],
             "empleado_id": usuario.empleado.id if usuario.empleado else None,
             "multiplexId": contrato.multiplexId if contrato else None,
+            "puntosAcumulados": (usuario.cliente.puntosAcumulados if usuario.cliente else None),
         }
     }
 
