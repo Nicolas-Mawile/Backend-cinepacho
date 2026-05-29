@@ -184,8 +184,8 @@ class PagoService:
             )
 
             link_confirmacion = (
-                f"{settings.backend_url}"
-                f"/api/v1/compras/confirmar-pago?token={token}"
+                f"{settings.frontend_url}"
+                f"/confirmar-pago?token={token}"
             )
 
             # ─────────────────────────────────────────────────────

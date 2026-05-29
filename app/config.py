@@ -70,6 +70,15 @@ class Settings(BaseSettings):
     )
 
     # ==========================================
+    # FRONTEND URL
+    # En producción sobreescribir con FRONTEND_URL=https://tu-dominio.com
+    # ==========================================
+
+    frontend_url: str = (
+        "http://localhost:5173"
+    )
+
+    # ==========================================
     # CONFIG
     # ==========================================
 
