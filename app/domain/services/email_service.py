@@ -19,17 +19,37 @@ class EmailService:
             settings.smtp_password,
         ])
 
-    def _enviar(self, mensaje: MIMEMultipart, destinatario: str):
-        """Envía un mensaje SMTP. Lanza excepción si falla."""
-        if not self._smtp_disponible():
-            logger.warning("SMTP no configurado — correo no enviado a %s", destinatario)
-            return
+    def _enviar(self, mensaje, destinatario):
 
-        servidor = smtplib.SMTP(settings.smtp_server, settings.smtp_port)
-        servidor.starttls()
-        servidor.login(settings.smtp_user, settings.smtp_password)
-        servidor.send_message(mensaje)
-        servidor.quit()
+        try:
+
+            print("===== ENVIANDO EMAIL =====")
+            print("TO:", destinatario)
+
+            servidor = smtplib.SMTP(
+                settings.smtp_server,
+                settings.smtp_port
+            )
+
+            servidor.set_debuglevel(1)
+
+            servidor.starttls()
+
+            servidor.login(
+                settings.smtp_user,
+                settings.smtp_password
+            )
+
+            servidor.send_message(mensaje)
+
+            servidor.quit()
+
+            print("EMAIL ENVIADO")
+
+        except Exception as e:
+
+            print("ERROR SMTP:", repr(e))
+            raise
 
     # =========================================================
     # CONFIRMACIÓN DE PAGO (link)

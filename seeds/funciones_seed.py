@@ -138,18 +138,12 @@ def validate_integrity(db):
                 f"{funcion.id}"
             )
 
-    print("✅ Validación funciones completada")
-
 
 def run():
 
     with SessionLocal() as db:
 
         try:
-
-            print(
-                "\n🎬 Iniciando seed funciones...\n"
-            )
 
             salas = db.execute(
                 select(Sala).where(
@@ -226,35 +220,15 @@ def run():
                         )
 
                         if creada:
-
                             count += 1
 
-                            print(
-                                f"✅ Sala {sala.numero} | "
-                                f"{pelicula.titulo} | "
-                                f"{fecha_inicio}"
-                            )
 
             db.commit()
-
             validate_integrity(db)
 
-            print(
-                f"\n✅ Seed funciones completado "
-                f"({count} funciones creadas)\n"
-            )
-
         except Exception as e:
-
             db.rollback()
-
-            print(
-                f"\n❌ Error seed funciones:\n{e}"
-            )
-
             raise e
 
-
 if __name__ == "__main__":
-
     run()

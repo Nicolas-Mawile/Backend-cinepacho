@@ -19,52 +19,20 @@ from seeds.servicios_seed import run as servicios_seed
 
 
 def run():
-    print("\n========== INICIANDO SEEDS ==========\n")
-
-    print("→ permisos")
     permisos_seed()
-
-    print("→ roles")
     roles_seed()
-
-    print("→ roles_permisos")
     roles_permisos_seed()
-
-    print("→ tipo_silla")
     tipo_silla_seed()
-
-    print("→ multiplex")
     multiplex_seed()
-
-    print("→ salas y sillas")
     salas_seed()
-
-    print("→ peliculas")
     pelicula_seed()
-
-    print("→ multiplex_cartelera")
     multiplex_cartelera_seed()
-
-    print("→ funciones")
     funcion_seed()
-
-    print("→ comidas")
     comidas_seed()
-
-    print("→ clientes")
     clientes_seed()
-
-    print("→ empleados")
     empleados_seed()
-
-    print("→ admin")
     admin_seed()
-
-    print("→ servicios")
     servicios_seed()
-
-    print("\n========== SEEDS COMPLETADOS ==========\n")
-
 
 if __name__ == "__main__":
     run()

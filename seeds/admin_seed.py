@@ -25,20 +25,15 @@ def run():
     try:
         existing = (db.execute(select(Empleado).where(Empleado.correo == ADMIN_DATA["correo"])).scalar_one_or_none())
         if existing:
-            print("✓ Admin ya existe.")
             return
 
         resultado = service.crearEmpleado(repo, ADMIN_DATA)
-        print("✓ Admin creado:")
-        print(resultado)
 
     except Exception as e:
         db.rollback()
-        print(f"✗ Error seed admin: {e}")
         raise
     finally:
         db.close()
-
 
 if __name__ == "__main__":
     run()

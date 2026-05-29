@@ -153,22 +153,11 @@ def create_or_update_comida(
         comida.precio = data["precio"]
         comida.descripcion = data.get("descripcion")
         comida.imagenUrl = data.get("imagenUrl")
-
-        print(
-            f"🔄 Comida actualizada: "
-            f"{comida.nombre}"
-        )
-
         return
 
     comida = Comida(**data)
-
     db.add(comida)
 
-    print(
-        f"✅ Comida creada: "
-        f"{comida.nombre}"
-    )
 
 
 def validate_integrity(db):
@@ -197,18 +186,12 @@ def validate_integrity(db):
                 f"{comida.nombre}"
             )
 
-    print("✅ Validación comidas completada")
-
 
 def run():
 
     with SessionLocal() as db:
 
         try:
-
-            print(
-                "\n🍿 Iniciando seed comidas...\n"
-            )
 
             for data in COMIDAS_DATA:
 
@@ -223,19 +206,9 @@ def run():
 
             validate_integrity(db)
 
-            print(
-                f"\n✅ Seed comidas completado "
-                f"({len(COMIDAS_DATA)} comidas)\n"
-            )
-
         except Exception as e:
 
             db.rollback()
-
-            print(
-                f"\n❌ Error seed comidas:\n{e}"
-            )
-
             raise e
 
 

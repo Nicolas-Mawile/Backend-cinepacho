@@ -99,14 +99,10 @@ def run():
     try:
         for permisoName in PERMISOS:
             exists = db.execute(select(Permiso).where(Permiso.nombre == permisoName)).scalar_one_or_none()
-
             if exists:
-                print(f"Permiso ya existe: {permisoName}")
                 continue
-
             permiso = Permiso(nombre=permisoName)
             db.add(permiso)
-            print(f"Permiso creado: {permisoName}")
         db.commit()
     finally:
         db.close()

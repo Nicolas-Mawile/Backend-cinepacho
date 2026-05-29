@@ -200,19 +200,24 @@ class PagoService:
             # Enviar email
             # ─────────────────────────────────────────────────────
 
-            try:
+            # try:
+            print("\n===== ENVIO DE CONFIRMACION =====")
+            print("Correo recibido:", correo)
+            print("Link:", link_confirmacion)
+            print("SMTP_USER:", settings.smtp_user)
+            print("=================================\n")
 
-                self.email_service.enviar_confirmacion_pago(
-                    destinatario=correo,
-                    link_confirmacion=link_confirmacion,
-                )
+            self.email_service.enviar_confirmacion_pago(
+                destinatario=correo,
+                link_confirmacion=link_confirmacion,
+            )
 
-            except Exception as email_error:
+            # except Exception as email_error:
 
-                print(
-                    f"[ADVERTENCIA] "
-                    f"No se pudo enviar el email: {email_error}"
-                )
+            #     print(
+            #         f"[ADVERTENCIA] "
+            #         f"No se pudo enviar el email: {email_error}"
+            #     )
 
             # ─────────────────────────────────────────────────────
             # Commit final

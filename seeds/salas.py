@@ -63,7 +63,6 @@ def run():
         try:
             existing = db.execute(select(Sala).limit(1)).scalar_one_or_none()
             if existing:
-                print("✔ Seed salas: ya existen registros, omitiendo.")
                 return
 
             tipo_estandar = db.execute(
@@ -74,12 +73,10 @@ def run():
             ).scalar_one_or_none()
 
             if not tipo_estandar or not tipo_preferencial:
-                print("✗ Seed salas: ejecuta seed_tipoSilla primero.")
                 return
 
             multiplexes = db.execute(select(Multiplex)).scalars().all()
             if not multiplexes:
-                print("✗ Seed salas: ejecuta seed_multiplex primero.")
                 return
 
             total_salas = 0
@@ -102,11 +99,9 @@ def run():
                     total_salas += 1
 
             db.commit()
-            print(f"✔ Seed salas: {total_salas} salas y {total_sillas} sillas creadas.")
 
         except Exception as e:
             db.rollback()
-            print(f"✗ Error en seed salas: {e}")
             raise
 
 

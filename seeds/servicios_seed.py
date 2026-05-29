@@ -21,16 +21,12 @@ def run():
 
             if not servicio_existente:
                 nuevo_servicio = Servicio(nombre=nombre_servicio)
-
                 db.add(nuevo_servicio)
-                print(f"✅ Servicio creado: {nombre_servicio}")
 
             else:
-                print(f"⚠️ Servicio ya existe: {nombre_servicio}")
+                continue
 
         db.commit()
-        print("🎉 Seed de servicios completado")
-
     finally:
         db.close()
 

@@ -31,7 +31,6 @@ def run():
         for data in CLIENTES:
             existing = (db.execute(select(Cliente).where(Cliente.correo == data["correo"])).scalar_one_or_none())
             if existing:
-                print(f"✓ Cliente ya existe: {data['correo']}")
                 continue
             # ==================================
             # CLIENTE
@@ -49,12 +48,9 @@ def run():
 
             db.add(usuario)
             db.commit()
-            print(f"✓ Cliente creado: {cliente.nombres} {cliente.apellidos}")
-        print("✓ Seed clientes completado.")
 
     except Exception as e:
         db.rollback()
-        print(f"✗ Error seed clientes: {e}")
         raise
     finally:
         db.close()

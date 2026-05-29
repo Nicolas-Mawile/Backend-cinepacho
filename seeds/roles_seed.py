@@ -17,11 +17,9 @@ def run():
             stmt = select(Rol).where(Rol.nombre == roleName)
             exists = (db.execute(stmt).scalar_one_or_none())
             if exists:
-                print(f"✓ Rol ya existe: {roleName}")
                 continue
             rol = Rol(nombre=roleName)
             db.add(rol)
-            print(f"✓ Rol creado: {roleName}")
         db.commit()
     finally:
         db.close()

@@ -191,25 +191,17 @@ class FacturaService:
                 funcion = boleta.funcion
 
                 resultado.append({
-                    "facturaId": factura.id,
-                    "codigoTransaccion": factura.codigoTransaccion,
-
-                    "pelicula": funcion.pelicula.titulo,
-
-                    "fechaFuncion": funcion.fechaHora,
-
-                    "sala": funcion.sala.numero,
-
-                    "multiplex": funcion.sala.multiplex.nombre,
-
-                    "silla": {
-                        "fila": boleta.silla.fila,
-                        "columna": boleta.silla.columna,
-                        "tipo": boleta.silla.tipoSilla.nombre,
-                    },
-
-                    "precio": detalle.subTotal,
-                })
+                            "boletaId": boleta.id,
+                            "facturaId": factura.id,
+                            "funcionId": funcion.id,
+                            "pelicula": funcion.pelicula.titulo,
+                            "sala": str(funcion.sala.numero),
+                            "fechaHora": funcion.fechaHora,
+                            "sillaId": boleta.silla.id,
+                            "fila": boleta.silla.fila,
+                            "columna": boleta.silla.columna,
+                            "fechaCompra": factura.fechaCreacion,
+                        })
 
         return resultado
 
@@ -256,29 +248,19 @@ class FacturaService:
             funcion = boleta.funcion
 
             boletas.append({
-                "boletaId": boleta.id,
-
-                "pelicula": funcion.pelicula.titulo,
-
-                "fechaFuncion": funcion.fechaHora,
-
-                "sala": funcion.sala.numero,
-
-                "multiplex": funcion.sala.multiplex.nombre,
-
-                "silla": {
-                    "fila": boleta.silla.fila,
-                    "columna": boleta.silla.columna,
-                    "tipo": boleta.silla.tipoSilla.nombre,
-                },
-
-                "precio": detalle.subTotal,
-            })
+                            "boletaId": boleta.id,
+                            "pelicula": funcion.pelicula.titulo,
+                            "sala": str(funcion.sala.numero),
+                            "fechaHora": funcion.fechaHora,
+                            "fila": str(boleta.silla.fila),
+                            "columna": boleta.silla.columna,
+                        })
 
         return {
-            "facturaId": factura.id,
-            "codigoTransaccion": factura.codigoTransaccion,
-            "total": factura.total,
-            "estadoFactura": factura.estadoFactura,
-            "boletas": boletas,
-        }
+                "facturaId": factura.id,
+                "codigoTransaccion": factura.codigoTransaccion,
+                "estado": factura.estadoFactura.value,
+                "fechaCompra": factura.fechaCreacion,
+                "total": factura.total,
+                "boletas": boletas,
+            }

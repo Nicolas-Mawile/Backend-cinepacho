@@ -64,13 +64,6 @@ def remove_inactive_movies_from_cartelera(db):
             db.delete(relacion)
             eliminadas += 1
 
-    if eliminadas > 0:
-
-        print(
-            f"🗑️ Relaciones eliminadas "
-            f"de cartelera: {eliminadas}"
-        )
-
 
 def validate_integrity(db):
 
@@ -95,19 +88,10 @@ def validate_integrity(db):
 
         combinaciones.add(key)
 
-    print("✅ Validación cartelera completada")
-
 
 def run():
-
     with SessionLocal() as db:
-
         try:
-
-            print(
-                "\n🎬 Iniciando seed cartelera...\n"
-            )
-
             multiplexes = db.execute(
                 select(Multiplex)
             ).scalars().all()
@@ -143,36 +127,16 @@ def run():
                     )
 
                     if created:
-
                         count += 1
 
-                        print(
-                            f"✅ {multiplex.nombre} -> "
-                            f"{pelicula.titulo}"
-                        )
 
             remove_inactive_movies_from_cartelera(db)
-
             db.commit()
-
             validate_integrity(db)
 
-            print(
-                f"\n✅ Seed cartelera completado "
-                f"({count} nuevas relaciones)\n"
-            )
-
         except Exception as e:
-
             db.rollback()
-
-            print(
-                f"\n❌ Error en seed cartelera:\n{e}"
-            )
-
             raise e
 
-
 if __name__ == "__main__":
-
     run()

@@ -138,7 +138,6 @@ def run():
             rol = db.execute(select(Rol).where(Rol.nombre == roleName)).scalar_one()
             permisos = db.execute(select(Permiso).where(Permiso.nombre.in_(permisosNames))).scalars().all()
             rol.permisos = permisos
-            print(f"Permisos asignados a {roleName}")
         db.commit()
     finally:
         db.close()

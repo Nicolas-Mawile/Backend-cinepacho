@@ -169,7 +169,7 @@ class MisBoletasResponse(BaseModel):
     sala: str
     fechaHora: datetime
     sillaId: int
-    fila: str
+    fila: int
     columna: int
     fechaCompra: datetime
 

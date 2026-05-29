@@ -76,67 +76,27 @@ TOTAL_PREFERENCIALES = 20
 
 def get_or_create_tipos_silla(db: Session):
 
-    general = db.execute(
-        select(TipoSilla).where(
-            TipoSilla.nombre == "GENERAL"
-        )
-    ).scalar_one_or_none()
+    general = db.execute(select(TipoSilla).where( TipoSilla.nombre == "GENERAL")).scalar_one_or_none()
 
     if not general:
-
-        general = TipoSilla(
-            nombre="GENERAL",
-            precio=11000
-        )
-
+        general = TipoSilla(nombre="GENERAL", precio=11000)
         db.add(general)
         db.commit()
         db.refresh(general)
 
-        print("✅ Tipo GENERAL creado")
-
-    preferencial = db.execute(
-        select(TipoSilla).where(
-            TipoSilla.nombre == "PREFERENCIAL"
-        )
-    ).scalar_one_or_none()
-
+    preferencial = db.execute(select(TipoSilla).where(TipoSilla.nombre == "PREFERENCIAL")).scalar_one_or_none()
     if not preferencial:
-
-        preferencial = TipoSilla(
-            nombre="PREFERENCIAL",
-            precio=15000
-        )
-
+        preferencial = TipoSilla(nombre="PREFERENCIAL", precio=15000)
         db.add(preferencial)
         db.commit()
         db.refresh(preferencial)
-
-        print("✅ Tipo PREFERENCIAL creado")
-
     return general, preferencial
 
-
-def create_multiplex_if_not_exists(
-    db: Session,
-    multiplex_data: dict
-):
-
-    multiplex = db.execute(
-        select(Multiplex).where(
-            Multiplex.codigo == multiplex_data["codigo"]
-        )
-    ).scalar_one_or_none()
+def create_multiplex_if_not_exists(db: Session, multiplex_data: dict):
+    multiplex = db.execute(select(Multiplex).where(Multiplex.codigo == multiplex_data["codigo"])).scalar_one_or_none()
 
     if multiplex:
-
-        print(
-            f"ℹ️ Multiplex ya existe: "
-            f"{multiplex.nombre}"
-        )
-
         return multiplex
-
     multiplex = Multiplex(
         nombre=multiplex_data["nombre"],
         codigo=multiplex_data["codigo"],
@@ -144,22 +104,13 @@ def create_multiplex_if_not_exists(
         direccion=multiplex_data["direccion"],
         latitud=float(multiplex_data["latitud"]),
         longitud=float(multiplex_data["longitud"]),
-        estaActivo=True
-    )
-
+        estaActivo=True)
     db.add(multiplex)
     db.commit()
     db.refresh(multiplex)
-
-    print(f"✅ Multiplex creado: {multiplex.nombre}")
-
     return multiplex
 
-
-def create_salas_if_needed(
-    db: Session,
-    multiplex: Multiplex
-):
+def create_salas_if_needed(db: Session, multiplex: Multiplex):
 
     salas_existentes = db.execute(
         select(Sala).where(
@@ -170,12 +121,6 @@ def create_salas_if_needed(
     cantidad_actual = len(salas_existentes)
 
     if cantidad_actual >= SALAS_POR_MULTIPLEX:
-
-        print(
-            f"ℹ️ {multiplex.nombre} ya tiene "
-            f"{cantidad_actual} salas"
-        )
-
         return salas_existentes
 
     for numero in range(
@@ -194,11 +139,6 @@ def create_salas_if_needed(
         db.add(sala)
 
     db.commit()
-
-    print(
-        f"✅ Salas creadas para "
-        f"{multiplex.nombre}"
-    )
 
     return db.execute(
         select(Sala).where(
@@ -221,12 +161,6 @@ def create_sillas_if_needed(
     ).scalars().all()
 
     if len(sillas_existentes) >= 60:
-
-        print(
-            f"ℹ️ Sala {sala.numero} ya tiene "
-            f"{len(sillas_existentes)} sillas"
-        )
-
         return
 
     existentes = {
@@ -280,11 +214,6 @@ def create_sillas_if_needed(
             db.add(silla)
 
     db.commit()
-
-    print(
-        f"✅ Sillas creadas para "
-        f"Sala {sala.numero}"
-    )
 
 
 def validate_integrity(db: Session):
@@ -345,59 +274,25 @@ def validate_integrity(db: Session):
                     f"no tiene 20 preferenciales"
                 )
 
-    print("✅ Validación completada correctamente")
-
 
 def run():
-
     db = SessionLocal()
-
     try:
-
-        print("\n🎬 Iniciando seed multiplex...\n")
-
-        tipo_general, tipo_preferencial = (
-            get_or_create_tipos_silla(db)
-        )
-
+        tipo_general, tipo_preferencial = (get_or_create_tipos_silla(db))
         for multiplex_data in MULTIPLEX_DATA:
-
-            multiplex = create_multiplex_if_not_exists(
-                db,
-                multiplex_data
-            )
-
-            salas = create_salas_if_needed(
-                db,
-                multiplex
-            )
+            multiplex = create_multiplex_if_not_exists(db, multiplex_data)
+            salas = create_salas_if_needed(db, multiplex)
 
             for sala in salas:
-
-                create_sillas_if_needed(
-                    db,
-                    sala,
-                    tipo_general,
-                    tipo_preferencial
-                )
+                create_sillas_if_needed(db, sala, tipo_general, tipo_preferencial)
 
         validate_integrity(db)
 
-        print("\n✅ Seed completado correctamente\n")
-
     except Exception as e:
-
         db.rollback()
-
-        print(f"\n❌ Error ejecutando seed:\n{e}")
-
         raise e
-
     finally:
-
         db.close()
 
-
 if __name__ == "__main__":
-
     run()

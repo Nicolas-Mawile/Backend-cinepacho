@@ -35,7 +35,6 @@ def run():
             existing = result.scalar_one_or_none()
             
             if existing:
-                print("✓ Seed configuracion: ya existen registros, omitiendo.")
                 return
             
             # Insertar nuevos datos
@@ -50,11 +49,9 @@ def run():
                 db.add(config)
             
             db.commit()
-            print(f"✓ Seed configuracion: {len(CONFIG_DATA)} valores insertados.")
             
         except Exception as e:
             db.rollback()
-            print(f"✗ Error en seed configuracion: {str(e)}")
             raise
 
 

@@ -114,22 +114,10 @@ def create_or_update_pelicula(
         pelicula.linkPoster = data["linkPoster"]
         pelicula.sinopsis = data["sinopsis"]
         pelicula.estaActiva = data["estaActiva"]
-
-        print(
-            f"🔄 Película actualizada: "
-            f"{pelicula.titulo}"
-        )
-
         return
 
     pelicula = Pelicula(**data)
-
     db.add(pelicula)
-
-    print(
-        f"✅ Película creada: "
-        f"{pelicula.titulo}"
-    )
 
 
 def validate_integrity(db):
@@ -158,43 +146,18 @@ def validate_integrity(db):
                 f"{pelicula.titulo}"
             )
 
-    print("✅ Validación de películas completada")
-
-
 def run():
-
     with SessionLocal() as db:
-
         try:
-
-            print("\n🎬 Iniciando seed películas...\n")
-
             for data in PELICULAS_DATA:
-
                 validate_pelicula_data(data)
-
-                create_or_update_pelicula(
-                    db,
-                    data
-                )
+                create_or_update_pelicula(db, data)
 
             db.commit()
-
             validate_integrity(db)
 
-            print(
-                f"\n✅ Seed películas completado "
-                f"({len(PELICULAS_DATA)} películas)\n"
-            )
-
         except Exception as e:
-
             db.rollback()
-
-            print(
-                f"\n❌ Error en seed películas:\n{e}"
-            )
-
             raise e
 
 

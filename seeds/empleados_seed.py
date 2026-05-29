@@ -61,19 +61,14 @@ def run():
             # ==================================
             existing = (db.execute(select(Empleado).where(Empleado.correo == data["correo"])).scalar_one_or_none())
             if existing:
-                print(f"✓ Empleado ya existe: {existing.correoLaboral}")
                 continue
             # ==================================
             # CREAR EMPLEADO
             # ==================================
             resultado = service.crearEmpleado(repo, data)
-            print(f"✓ Empleado creado: {resultado['empleado']['correoLaboral']}")
-
-        print("✓ Seed empleados completado.")
 
     except Exception as e:
         db.rollback()
-        print(f"✗ Error seed empleados: {e}")
         raise
     finally:
         db.close()
