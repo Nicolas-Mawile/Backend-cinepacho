@@ -10,6 +10,8 @@ from app.infrastructure.repositories.silla_repository import SillaRepository
 from app.infrastructure.models.sala import Sala
 from app.infrastructure.models.silla import Silla
 from app.infrastructure.models.tipoSilla import TipoSilla
+from app.infrastructure.models.boleta import Boleta
+from app.infrastructure.models.funcion import Funcion
 from app.api.schemas.sala import SalaCreate, SalaUpdate, SillaCreate
 from app.domain.exceptions import (
     SalaNotFoundError,
@@ -313,6 +315,8 @@ class SalaService:
 
         if not sala:
             raise SalaNotFoundError()
+        
+        self.validar_sala_bloqueada_para_edicion(sala_id)
 
         if datos.numero is not None:
             self.validar_numero_unico(datos.numero, sala.multiplexId, excluir_sala_id=sala_id)
@@ -430,3 +434,19 @@ class SalaService:
         tipos = self.db.execute(stmt).scalars().all()
 
         return {t.nombre.lower(): t for t in tipos}
+    
+    def validar_sala_bloqueada_para_edicion(self, sala_id: int):
+
+        existe_boletas = (
+            self.db.query(Boleta)
+            .join(Funcion, Boleta.funcionId == Funcion.id)
+            .filter(
+                Funcion.salaId == sala_id
+            )
+            .first()
+        )
+
+        if existe_boletas:
+            raise SalaConfigurationError(
+                "No se puede modificar la sala porque tiene funciones con boletas vendidas."
+            )
