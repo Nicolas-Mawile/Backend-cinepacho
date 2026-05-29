@@ -100,3 +100,17 @@ class CambiarCargoEmpleadoRequest(BaseModel):
         default=None,
         max_length=255
     )
+
+class ActualizarEmpleadoRequest(BaseModel):
+    # Datos personales — siempre actualizables
+    nombres: Optional[str] = None
+    apellidos: Optional[str] = None
+    correo: Optional[EmailStr] = None
+    telefono: Optional[str] = None
+    password: Optional[str] = Field(default=None, min_length=8)
+
+    # Campos restringidos — solo después de 3 meses
+    cargo: Optional[CargoEnum] = None
+    salario: Optional[float] = Field(default=None, gt=0)
+    multiplexId: Optional[int] = None
+    motivo: Optional[str] = Field(default=None, max_length=255)

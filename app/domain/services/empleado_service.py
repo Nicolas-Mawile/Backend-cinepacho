@@ -361,4 +361,138 @@ class EmpleadoService:
                 "salarioNuevo": salarioFinal
             }
         }
+
+    def actualizarDatosEmpleado(
+        self,
+        empleadoId: int,
+        datos: dict,
+        usuarioAdministradorId: int | None = None
+    ):
+        # ======================================
+        # BUSCAR EMPLEADO
+        # ======================================
+
+        stmt = select(Empleado).where(Empleado.id == empleadoId)
+        empleado = self.db.execute(stmt).scalar_one_or_none()
+
+        if not empleado:
+            raise ValueError("Empleado no encontrado")
+
+        # ======================================
+        # DATOS PERSONALES (siempre permitidos)
+        # ======================================
+
+        for campo in ("nombres", "apellidos", "correo", "telefono"):
+            if campo in datos:
+                setattr(empleado, campo, datos[campo])
+
+        if "password" in datos:
+            usuarioEmpleado = empleado.usuario
+            if not usuarioEmpleado:
+                raise ValueError("El empleado no tiene usuario")
+            usuarioEmpleado.passwordHash = (
+                self.authService.hashPassword(datos["password"])
+            )
+
+        # ======================================
+        # CAMPOS RESTRINGIDOS — regla 3 meses
+        # ======================================
+
+        CAMPOS_RESTRINGIDOS = ("cargo", "salario", "multiplexId")
+        hay_cambios_restringidos = any(k in datos for k in CAMPOS_RESTRINGIDOS)
+
+        if hay_cambios_restringidos:
+
+            contratoActual = empleado.contratoActivo
+
+            if not contratoActual:
+                raise ValueError("El empleado no tiene contrato activo")
+
+            hoy = date.today()
+            diasTranscurridos = (hoy - contratoActual.fechaInicio).days
+
+            if diasTranscurridos < 90:
+                raise ValueError(
+                    "Multiplex, salario y cargo solo pueden "
+                    "cambiarse después de 3 meses"
+                )
+
+            cargoNuevo = datos.get("cargo", contratoActual.cargo)
+            salarioNuevo = datos.get("salario", float(contratoActual.salario))
+            multiplexNuevo = datos.get("multiplexId", contratoActual.multiplexId)
+
+            hay_cambio_real = (
+                cargoNuevo != contratoActual.cargo
+                or salarioNuevo != float(contratoActual.salario)
+                or multiplexNuevo != contratoActual.multiplexId
+            )
+
+            if hay_cambio_real:
+
+                cargo_cambio = cargoNuevo != contratoActual.cargo
+
+                # ──────────────────────────────
+                # Finalizar contrato actual
+                # ──────────────────────────────
+                contratoActual.fechaFin = hoy
+                contratoActual.activo = False
+
+                # ──────────────────────────────
+                # Crear nuevo contrato
+                # ──────────────────────────────
+                nuevoContrato = Contrato(
+                    empleadoId=empleado.id,
+                    multiplexId=multiplexNuevo,
+                    cargo=cargoNuevo,
+                    salario=salarioNuevo,
+                    fechaInicio=hoy,
+                    activo=True,
+                )
+                self.db.add(nuevoContrato)
+
+                # ──────────────────────────────
+                # Actualizar rol si cambió cargo
+                # ──────────────────────────────
+                if cargo_cambio:
+                    nuevoRol = self.obtenerRolSegunCargo(cargoNuevo)
+                    usuarioEmpleado = empleado.usuario
+                    if not usuarioEmpleado:
+                        raise ValueError("El empleado no tiene usuario")
+                    usuarioEmpleado.rolId = nuevoRol.id
+
+                    historial = HistorialCargo(
+                        empleadoId=empleado.id,
+                        cargoAnterior=contratoActual.cargo,
+                        cargoNuevo=cargoNuevo,
+                        multiplexId=multiplexNuevo,
+                        motivo=datos.get("motivo"),
+                        registradoPorId=usuarioAdministradorId,
+                    )
+                    self.db.add(historial)
+
+        # ======================================
+        # COMMIT
+        # ======================================
+
+        self.db.commit()
+        self.db.refresh(empleado)
+
+        # ======================================
+        # RESPONSE
+        # ======================================
+
+        return {
+            "mensaje": "Empleado actualizado correctamente",
+            "empleado": {
+                "id": empleado.id,
+                "nombres": empleado.nombres,
+                "apellidos": empleado.apellidos,
+                "correo": empleado.correo,
+                "telefono": empleado.telefono,
+                "correoLaboral": empleado.correoLaboral,
+                "cargoActual": empleado.cargoActual,
+                "multiplexActual": empleado.multiplexActual,
+                "salarioActual": empleado.salarioActual,
+            },
+        }
         
