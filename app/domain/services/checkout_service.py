@@ -185,11 +185,14 @@ class CheckoutService:
                         )
 
                     precio_base = silla.tipoSilla.precio
+                    dia_semana = funcion.fechaHora.weekday()
                     # Promoción martes (1) y miércoles (2): mitad de precio
-                    if funcion.fechaHora.weekday() in [1, 2]:
+                    if dia_semana in [1, 2]:
                         precio = int(precio_base / 2)
+                        print(f"[CHECKOUT] Silla {silla_id} | tipoSilla='{silla.tipoSilla.nombre}' | precio_base={precio_base} | dia_semana={dia_semana} (mar/mie) → precio con 50% dto={precio}")
                     else:
                         precio = precio_base
+                        print(f"[CHECKOUT] Silla {silla_id} | tipoSilla='{silla.tipoSilla.nombre}' | precio_base={precio_base} | dia_semana={dia_semana} → sin descuento, precio={precio}")
 
                     boleta = Boleta(
                         funcionId=funcion_id,
@@ -252,6 +255,15 @@ class CheckoutService:
             # ─── Totales ───────────────────────────────────────────
             subtotal_total = total_boletas + subtotal_snacks
             total_final = total_boletas + subtotal_snacks_con_descuento
+
+            print(f"[CHECKOUT] ── RESUMEN DE TOTALES ──────────────────────")
+            print(f"[CHECKOUT]   total_boletas            = {total_boletas}")
+            print(f"[CHECKOUT]   subtotal_snacks          = {subtotal_snacks}")
+            print(f"[CHECKOUT]   subtotal_snacks_dto      = {subtotal_snacks_con_descuento}")
+            print(f"[CHECKOUT]   descuento_snacks         = {descuento_snacks}")
+            print(f"[CHECKOUT]   subtotal (sin dto)       = {subtotal_total}")
+            print(f"[CHECKOUT]   total_final (a pagar)    = {total_final}")
+            print(f"[CHECKOUT] ────────────────────────────────────────────")
 
             factura.subTotal = subtotal_total
             factura.descuento = descuento_snacks

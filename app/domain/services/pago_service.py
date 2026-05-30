@@ -45,6 +45,7 @@ class PagoService:
         telefono: str,
     ):
         try:
+            print(f"[PAGAR] usarRecompensa={usarRecompensa}")
 
             factura = self.factura_repository.get_by_id(factura_id)
 
@@ -108,7 +109,7 @@ class PagoService:
             boleta_general = None
 
             if usarRecompensa:
-
+                print(f"[PAGAR] usarRecompensa=True → buscando recompensa para clienteId={cliente.id}")
                 recompensa = (
                     self.db.query(RecompensaBoleta)
                     .filter(
@@ -118,6 +119,7 @@ class PagoService:
                     )
                     .first()
                 )
+                print(f"[PAGAR] recompensa encontrada={recompensa}  id={recompensa.id if recompensa else None}")
                 if recompensa:
                     for detalle in factura.detalles:
 
@@ -321,13 +323,21 @@ class PagoService:
             factura = pago.factura
             cliente = factura.cliente
 
+            print(f"[CONFIRMAR] pagoId={pago.id}  recompensaId={pago.recompensaId}  pago.recompensa={pago.recompensa}")
+            print(f"[CONFIRMAR] factura.clienteId={factura.clienteId}  factura.cliente={factura.cliente}")
+            if factura.cliente:
+                print(f"[CONFIRMAR] puntosAcumulados ANTES del reset = {factura.cliente.puntosAcumulados}")
+
             # ─── Aprobar pago ─────────────────────────────────────
             pago.estado = EstadoPagoEnum.PAGADO
-            pago.fechaPago = nowNaive()     
+            pago.fechaPago = nowNaive()
             if pago.recompensa:
                 pago.recompensa.utilizada = True
                 if factura.cliente:
                     factura.cliente.puntosAcumulados = 0
+                    print(f"[CONFIRMAR] ✓ Recompensa usada → puntos reseteados a 0")
+                else:
+                    print(f"[CONFIRMAR] ✗ pago.recompensa existe PERO factura.cliente es None — reset no aplicado")
 
             # ─── Marcar factura como pagada ───────────────────────
             factura.estadoFactura = EstadoFacturaEnum.PAGADA
@@ -346,7 +356,7 @@ class PagoService:
             if tiene_snacks:
                 puntos_ganados += 5
 
-            if cliente:
+            if cliente and not pago.recompensa:
                 puntos_anteriores = cliente.puntosAcumulados
                 cliente.puntosAcumulados = min(100, cliente.puntosAcumulados + puntos_ganados)
 
@@ -378,6 +388,10 @@ class PagoService:
 
                     self.db.add(recompensa)
 
+            if cliente:
+                print(f"[CONFIRMAR] ── PUNTOS FINALES antes del commit ──")
+                print(f"[CONFIRMAR]   clienteId={cliente.id}  puntosAcumulados={cliente.puntosAcumulados}")
+                print(f"[CONFIRMAR]   recompensa usada={bool(pago.recompensa)}")
             self.db.commit()
             self.db.refresh(factura)
 
