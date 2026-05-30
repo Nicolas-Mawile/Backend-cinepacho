@@ -43,6 +43,9 @@ class FuncionService:
             print(f"[FUNCION] ✗ CONFLICTO con funcion existente:")
             print(f"[FUNCION]   id={conflicto.id}  peliculaId={conflicto.peliculaId}  salaId={conflicto.salaId}")
             print(f"[FUNCION]   inicio={conflicto.fechaHora}  fin={conflicto.fechaHoraFin}  activa={conflicto.estaActiva}")
+            ahora = nowNaive()
+            if conflicto.fechaHora <= ahora <= conflicto.fechaHoraFin:
+                raise FuncionValidationError("No se puede crear la funcion: hay una funcion en curso en esta sala")
             raise FuncionValidationError("Ya existe una funcion programada en ese horario para esta sala")
 
         print(f"[FUNCION] ✓ Sin solapamiento, creando funcion...")

@@ -22,7 +22,7 @@ def _map_funcion_error(exc: Exception):
         raise HTTPException(status_code=404, detail=str(exc))
     if isinstance(exc, FuncionValidationError):
         message = str(exc).lower()
-        status_code = 409 if any(token in message for token in ["dependencias", "solapamiento", "ya existe", "ya esta", "boletas vendidas"]) else 400
+        status_code = 409 if any(token in message for token in ["dependencias", "solapamiento", "ya existe", "ya esta", "boletas vendidas", "en curso"]) else 400
         raise HTTPException(status_code=status_code, detail=str(exc))
     raise exc
 
