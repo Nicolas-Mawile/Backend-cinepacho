@@ -11,6 +11,7 @@ from app.api.routers.empleados_router import router as empleados_router
 from app.api.routers.compras_router import router as compras_router
 from app.api.routers.comida_router import router as comidas_router
 from app.api.routers.evaluacion_router import router as evaluacion_router
+from app.api.routers.sillas_router import router as sillas_router
 
 router = APIRouter()
 
@@ -24,3 +25,4 @@ router.include_router(auth_router)
 router.include_router(empleados_router)
 router.include_router(comidas_router)
 router.include_router(evaluacion_router)
+router.include_router(sillas_router)

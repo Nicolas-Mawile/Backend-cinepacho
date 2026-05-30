@@ -21,7 +21,7 @@ class AuthService:
     def createAccessToken(self, data: dict) -> str:
         """Genera un JWT de acceso con expiración establecida."""
         payload = data.copy()
-        expiration = nowColombia() + timedelta(hours=24)
+        expiration = nowColombia() + timedelta(minutes=settings.access_token_expire_minutes)
         payload.update({"exp": expiration, "jti": str(uuid4())})
 
         return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
