@@ -16,6 +16,7 @@ from seeds.clientes_seed import run as clientes_seed
 from seeds.empleados_seed import run as empleados_seed
 from seeds.admin_seed import run as admin_seed
 from seeds.servicios_seed import run as servicios_seed
+from seeds.evaluacion_seed import run as evaluacion_seed
 
 
 def run():
@@ -33,6 +34,7 @@ def run():
     empleados_seed()
     admin_seed()
     servicios_seed()
+    evaluacion_seed()
 
 if __name__ == "__main__":
     run()

@@ -124,7 +124,6 @@ def me(user=Depends(get_current_user)):
         correo = user.empleado.correoLaboral
 
     contrato = user.empleado.contratoActivo if user.empleado else None
-
     return {
         "id": user.id,
         "nombres": user.nombres,
@@ -134,6 +133,7 @@ def me(user=Depends(get_current_user)):
         "permisos": permisos,
         "empleado_id": user.empleado.id if user.empleado else None,
         "multiplexId": contrato.multiplexId if contrato else None,
+        "puntosAcumulados": user.cliente.puntosAcumulados if user.cliente else None,
     }
 
 # def _buildUsuarioResponse(usuario: Usuario) -> dict:
