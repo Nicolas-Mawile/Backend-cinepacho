@@ -10,6 +10,7 @@ from app.infrastructure.models.boleta import Boleta
 from app.infrastructure.models.factura import (
     Factura
 )
+from app.utils.timezone import nowColombia
 
 from app.infrastructure.models.funcion import (
     Funcion
@@ -113,11 +114,7 @@ class EvaluacionService:
         # VALIDAR FUNCIÓN FINALIZADA
         # =================================
 
-        if (
-            funcion.fechaHoraFin
-            >
-            datetime.utcnow()
-        ):
+        if (funcion.fechaHoraFin > nowColombia()):
 
             raise HTTPException(
                 status_code=400,
@@ -272,8 +269,7 @@ class EvaluacionService:
         if (
             factura.fechaCreacion.date()
             !=
-            datetime.utcnow(
-            ).date()
+            nowColombia().date()
         ):
 
             raise HTTPException(
@@ -355,7 +351,7 @@ class EvaluacionService:
         cliente_id: int,
     ):
 
-        ahora = datetime.utcnow()
+        ahora = nowColombia()
 
         detalles = (
             self.db.query(DetalleFactura)
@@ -417,7 +413,7 @@ class EvaluacionService:
         cliente_id: int,
     ):
 
-        hoy = datetime.utcnow().date()
+        hoy = nowColombia().date()
 
         detalles = (
             self.db.query(DetalleFactura)

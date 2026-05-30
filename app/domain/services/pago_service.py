@@ -14,6 +14,7 @@ from app.infrastructure.models.EstadoPagoEnum import EstadoPagoEnum
 from app.infrastructure.repositories.pago_repository import PagoRepository
 from app.infrastructure.repositories.factura_repository import FacturaRepository
 from app.domain.services.email_service import EmailService
+from app.utils.timezone import nowColombia
 
 
 class PagoService:
@@ -67,7 +68,7 @@ class PagoService:
             # Validar expiración
             # ─────────────────────────────────────────────────────
 
-            if factura.fechaExpiracionReserva < datetime.utcnow():
+            if factura.fechaExpiracionReserva < nowColombia():
 
                 factura.estadoFactura = EstadoFacturaEnum.CANCELADA
 
@@ -177,7 +178,7 @@ class PagoService:
             token = jwt.encode(
                 {
                     "pagoId": pago.id,
-                    "exp": datetime.utcnow() + timedelta(minutes=10),
+                    "exp": nowColombia() + timedelta(minutes=10),
                 },
                 settings.secret_key,
                 algorithm="HS256",
@@ -279,7 +280,7 @@ class PagoService:
                     detail="El pago ya fue procesado",
                 )
 
-            if pago.fechaExpiracion < datetime.utcnow():
+            if pago.fechaExpiracion < nowColombia():
                 pago.estado = EstadoPagoEnum.EXPIRADO
                 pago.factura.estadoFactura = EstadoFacturaEnum.CANCELADA
                 self.db.commit()
@@ -290,12 +291,12 @@ class PagoService:
 
             # ─── Aprobar pago ─────────────────────────────────────
             pago.estado = EstadoPagoEnum.PAGADO
-            pago.fechaPago = datetime.utcnow()     # ← corregido (era utcnow())
+            pago.fechaPago = nowColombia()     
 
             # ─── Marcar factura como pagada ───────────────────────
             factura.estadoFactura = EstadoFacturaEnum.PAGADA
             factura.codigoTransaccion = (
-                f"TX-{factura.id}-{int(datetime.utcnow().timestamp())}"
+                f"TX-{factura.id}-{int(nowColombia().timestamp())}"
             )
 
             # ─── Fidelización ─────────────────────────────────────

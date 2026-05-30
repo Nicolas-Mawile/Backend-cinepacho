@@ -11,6 +11,7 @@ from app.infrastructure.repositories.usuarioRepository import UsuarioRepository
 from app.domain.services.auth_service import AuthService
 from app.api.dependencies import get_current_user
 from app.infrastructure.models.cliente import Cliente
+from app.utils.timezone import nowColombia
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -72,7 +73,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     if not usuario.estaActivo:
         raise HTTPException(status_code=403, detail="Usuario inactivo")
     
-    if usuario.bloqueadoHasta and usuario.bloqueadoHasta > datetime.now(datetime.timezone.utc):
+    if usuario.bloqueadoHasta and usuario.bloqueadoHasta > nowColombia():
         raise HTTPException(status_code=403, detail="Usuario bloqueado temporalmente")
 
     validPassword = authService.verifyPassword(data.password, usuario.passwordHash)
@@ -81,7 +82,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
 
         if usuario.intentosFallidos >= 5:
             from datetime import timedelta
-            usuario.bloqueadoHasta = datetime.now(timezone.utc) + timedelta(minutes=15)
+            usuario.bloqueadoHasta = nowColombia() + timedelta(minutes=15)
         
         db.commit()
         raise HTTPException(status_code=401, detail="Credenciales inválidas")

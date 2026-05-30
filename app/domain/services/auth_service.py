@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from jose import jwt
 from passlib.context import CryptContext
 from app.config import settings
+from app.utils.timezone import nowColombia
 
 class AuthService:
     """Encapsula la lógica de autenticación y creación de tokens."""
@@ -19,7 +20,7 @@ class AuthService:
     def createAccessToken(self, data: dict) -> str:
         """Genera un JWT de acceso con expiración establecida."""
         payload = data.copy()
-        expiration = datetime.now(timezone.utc) + timedelta(hours=24)
+        expiration = nowColombia() + timedelta(hours=24)
         payload.update({"exp": expiration})
 
         return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
@@ -27,7 +28,7 @@ class AuthService:
     def createRefreshToken(self, data: dict) -> str:
 
         toEncode = data.copy()
-        expire = datetime.now(timezone.utc) + timedelta(days=7)
+        expire = nowColombia() + timedelta(days=7)
 
         toEncode.update(
             {

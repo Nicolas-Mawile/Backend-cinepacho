@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
+from app.utils.timezone import nowColombia
 
 from app.config import settings
 from app.infrastructure.models.factura import Factura
@@ -135,7 +136,7 @@ class CheckoutService:
                     raise HTTPException(status_code=400, detail="La función está inactiva")
 
                 # Cierre de ventas: no se puede comprar después del inicio
-                now = datetime.now(timezone.utc)
+                now = nowColombia()
                 fecha_funcion = funcion.fechaHora
                 # convertir a timezone-aware si viene naive desde la BD
                 if fecha_funcion.tzinfo is None:
@@ -153,8 +154,8 @@ class CheckoutService:
                 subTotal=0,
                 descuento=0,
                 total=0,
-                fechaCreacion=datetime.utcnow(),          # ← corregido typo
-                fechaExpiracionReserva=datetime.utcnow() + timedelta(minutes=10),
+                fechaCreacion=nowColombia(),          # ← corregido typo
+                fechaExpiracionReserva=nowColombia() + timedelta(minutes=10),
                 codigoTransaccion=str(uuid.uuid4()),
                 estadoFactura=EstadoFacturaEnum.RESERVADA,
             )
@@ -311,7 +312,7 @@ class CheckoutService:
         )
 
         response = []
-        now = datetime.utcnow()
+        now = nowColombia()
         for silla in sillas:
             boleta = (
                 self.db.query(Boleta)

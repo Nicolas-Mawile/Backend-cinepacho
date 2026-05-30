@@ -16,6 +16,8 @@ from app.infrastructure.models.detalleFactura import DetalleFactura
 from app.api.schemas.compra import DisponibilidadSillaResponse
 from app.domain.services.checkout_service import CheckoutService
 from app.api.routers.compras_router import get_checkout_service
+from app.utils.timezone import nowColombia
+
 
 router = APIRouter(prefix="/api/v1", tags=["Sillas"])
 
@@ -154,7 +156,7 @@ def desactivar_sillas_multiplex(
     return {
         "cantidad_desactivadas": cantidad,
         "multiplex_id": multiplex_id,
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": nowColombia().isoformat(),
         "mensaje": f"Se desactivaron {cantidad} sillas del multiplex {multiplex_id}",
     }
 
