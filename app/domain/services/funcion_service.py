@@ -20,6 +20,9 @@ class FuncionService:
         self.repo = FuncionRepository(db)
 
     def crear_funcion(self, data: FuncionCreate) -> Funcion:
+        print(f"\n[FUNCION] ▶ Intentando crear funcion:")
+        print(f"[FUNCION]   salaId={data.salaId}  peliculaId={data.peliculaId}  fechaHora={data.fechaHora}")
+
         sala = self.repo.get_sala(data.salaId)
         if not sala or not sala.estaActiva:
             raise SalaNotFoundError("Sala no encontrada o inactiva")
@@ -32,10 +35,17 @@ class FuncionService:
             raise FuncionValidationError("La pelicula no esta en la cartelera de este multiplex")
 
         fecha_fin = data.fechaHora + timedelta(minutes=pelicula.duracionMinutos)
+        print(f"[FUNCION]   duracion={pelicula.duracionMinutos} min  →  fechaHoraFin calculada={fecha_fin}")
+        print(f"[FUNCION]   Rango solicitado: {data.fechaHora}  →  {fecha_fin}")
 
-        if self.repo.hay_solapamiento(data.salaId, data.fechaHora, fecha_fin):
+        conflicto = self.repo.hay_solapamiento(data.salaId, data.fechaHora, fecha_fin)
+        if conflicto:
+            print(f"[FUNCION] ✗ CONFLICTO con funcion existente:")
+            print(f"[FUNCION]   id={conflicto.id}  peliculaId={conflicto.peliculaId}  salaId={conflicto.salaId}")
+            print(f"[FUNCION]   inicio={conflicto.fechaHora}  fin={conflicto.fechaHoraFin}  activa={conflicto.estaActiva}")
             raise FuncionValidationError("Ya existe una funcion programada en ese horario para esta sala")
 
+        print(f"[FUNCION] ✓ Sin solapamiento, creando funcion...")
         funcion = Funcion(
             peliculaId=data.peliculaId,
             salaId=data.salaId,
@@ -135,7 +145,10 @@ class FuncionService:
             raise FuncionValidationError("La pelicula no esta en la cartelera de este multiplex")
 
         nueva_fecha_fin = nueva_fecha_hora + timedelta(minutes=pelicula.duracionMinutos)
-        if self.repo.hay_solapamiento(nueva_sala_id, nueva_fecha_hora, nueva_fecha_fin, excluir_id=funcion_id):
+        conflicto_edicion = self.repo.hay_solapamiento(nueva_sala_id, nueva_fecha_hora, nueva_fecha_fin, excluir_id=funcion_id)
+        if conflicto_edicion:
+            print(f"[FUNCION] ✗ CONFLICTO al editar funcion {funcion_id}:")
+            print(f"[FUNCION]   choca con id={conflicto_edicion.id}  inicio={conflicto_edicion.fechaHora}  fin={conflicto_edicion.fechaHoraFin}")
             raise FuncionValidationError("Ya existe una funcion programada en ese horario para esta sala")
 
         cambios = {
@@ -160,7 +173,7 @@ class FuncionService:
         if not funcion:
             raise FuncionNotFoundError("Funcion no encontrada")
         actualizada = self.repo.update(funcion_id, {"estaActiva": estaActiva})
-        return self.repo.get_detallada(actualizada.id) if actualizada else None
+        return actualizada
     
     def _actualizar_funciones_vencidas(self):
         self.repo.desactivar_funciones_vencidas()
