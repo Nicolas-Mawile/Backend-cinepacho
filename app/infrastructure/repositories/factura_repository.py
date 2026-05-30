@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
-from app.utils.timezone import nowColombia
+from app.utils.timezone import nowNaive
 from app.infrastructure.models.factura import Factura
 from app.infrastructure.models.EstadoFacturaEnum import EstadoFacturaEnum
 
@@ -35,7 +35,7 @@ class FacturaRepository:
             self.db.query(Factura)
             .filter(
                 Factura.estadoFactura == EstadoFacturaEnum.RESERVADA,
-                Factura.fechaExpiracionReserva < nowColombia()
+                Factura.fechaExpiracionReserva < nowNaive()
             )
             .all()
         )

@@ -11,7 +11,7 @@ from app.infrastructure.repositories.usuarioRepository import UsuarioRepository
 from app.domain.services.auth_service import AuthService
 from app.api.dependencies import get_current_user
 from app.infrastructure.models.cliente import Cliente
-from app.utils.timezone import nowColombia
+from app.utils.timezone import nowNaive
 from app.infrastructure.models.recompensaBoleta import RecompensaBoleta
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -73,7 +73,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     if not usuario.estaActivo:
         raise HTTPException(status_code=403, detail="Usuario inactivo")
     
-    if usuario.bloqueadoHasta and usuario.bloqueadoHasta > nowColombia():
+    if usuario.bloqueadoHasta and usuario.bloqueadoHasta > nowNaive():
         raise HTTPException(status_code=403, detail="Usuario bloqueado temporalmente")
 
     validPassword = authService.verifyPassword(data.password, usuario.passwordHash)
@@ -82,7 +82,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
 
         if usuario.intentosFallidos >= 5:
             from datetime import timedelta
-            usuario.bloqueadoHasta = nowColombia() + timedelta(minutes=15)
+            usuario.bloqueadoHasta = nowNaive() + timedelta(minutes=15)
         
         db.commit()
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
@@ -107,7 +107,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
             .filter(
                 RecompensaBoleta.clienteId == usuario.cliente.id,
                 RecompensaBoleta.utilizada == False,
-                RecompensaBoleta.fechaVencimiento > nowColombia(),).count())
+                RecompensaBoleta.fechaVencimiento > nowNaive(),).count())
 
     return {
         "access_token": accessToken,

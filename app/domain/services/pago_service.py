@@ -14,7 +14,7 @@ from app.infrastructure.models.EstadoPagoEnum import EstadoPagoEnum
 from app.infrastructure.repositories.pago_repository import PagoRepository
 from app.infrastructure.repositories.factura_repository import FacturaRepository
 from app.domain.services.email_service import EmailService
-from app.utils.timezone import nowColombia
+from app.utils.timezone import nowColombia, nowNaive
 from app.infrastructure.models.recompensaBoleta import RecompensaBoleta
 
 class PagoService:
@@ -68,7 +68,7 @@ class PagoService:
             # Validar expiración
             # ─────────────────────────────────────────────────────
 
-            if factura.fechaExpiracionReserva < nowColombia():
+            if factura.fechaExpiracionReserva < nowNaive():
 
                 factura.estadoFactura = EstadoFacturaEnum.CANCELADA
 
@@ -114,7 +114,7 @@ class PagoService:
                     .filter(
                         RecompensaBoleta.clienteId == cliente.id,
                         RecompensaBoleta.utilizada == False,
-                        RecompensaBoleta.fechaVencimiento > nowColombia(),
+                        RecompensaBoleta.fechaVencimiento > nowNaive(),
                     )
                     .first()
                 )
@@ -312,7 +312,7 @@ class PagoService:
                     detail="El pago ya fue procesado",
                 )
 
-            if pago.fechaExpiracion < nowColombia():
+            if pago.fechaExpiracion < nowNaive():
                 pago.estado = EstadoPagoEnum.EXPIRADO
                 pago.factura.estadoFactura = EstadoFacturaEnum.CANCELADA
                 self.db.commit()
@@ -323,7 +323,7 @@ class PagoService:
 
             # ─── Aprobar pago ─────────────────────────────────────
             pago.estado = EstadoPagoEnum.PAGADO
-            pago.fechaPago = nowColombia()     
+            pago.fechaPago = nowNaive()     
             if pago.recompensa:
                 pago.recompensa.utilizada = True
                 if factura.cliente:
@@ -355,7 +355,7 @@ class PagoService:
                     .filter(
                         RecompensaBoleta.clienteId == cliente.id,
                         RecompensaBoleta.utilizada == False,
-                        RecompensaBoleta.fechaVencimiento > nowColombia(),
+                        RecompensaBoleta.fechaVencimiento > nowNaive(),
                     )
                     .first()
                 )
@@ -368,9 +368,9 @@ class PagoService:
 
                     recompensa = RecompensaBoleta(
                         clienteId=cliente.id,
-                        fechaOtorgamiento=nowColombia(),
+                        fechaOtorgamiento=nowNaive(),
                         fechaVencimiento=(
-                            nowColombia()
+                            nowNaive()
                             + timedelta(days=180)
                         ),
                         utilizada=False,

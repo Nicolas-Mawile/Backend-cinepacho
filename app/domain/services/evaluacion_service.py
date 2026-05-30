@@ -10,7 +10,7 @@ from app.infrastructure.models.boleta import Boleta
 from app.infrastructure.models.factura import (
     Factura
 )
-from app.utils.timezone import nowColombia
+from app.utils.timezone import nowNaive
 
 from app.infrastructure.models.funcion import (
     Funcion
@@ -114,7 +114,7 @@ class EvaluacionService:
         # VALIDAR FUNCIÓN FINALIZADA
         # =================================
 
-        if (funcion.fechaHoraFin > nowColombia()):
+        if (funcion.fechaHoraFin > nowNaive()):
 
             raise HTTPException(
                 status_code=400,
@@ -269,7 +269,7 @@ class EvaluacionService:
         if (
             factura.fechaCreacion.date()
             !=
-            nowColombia().date()
+            nowNaive().date()
         ):
 
             raise HTTPException(
@@ -351,7 +351,7 @@ class EvaluacionService:
         cliente_id: int,
     ):
 
-        ahora = nowColombia()
+        ahora = nowNaive()
 
         detalles = (
             self.db.query(DetalleFactura)
@@ -413,7 +413,7 @@ class EvaluacionService:
         cliente_id: int,
     ):
 
-        hoy = nowColombia().date()
+        hoy = nowNaive().date()
 
         detalles = (
             self.db.query(DetalleFactura)

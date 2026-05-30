@@ -1,7 +1,7 @@
 """Servicio de funciones."""
 
 from datetime import timedelta, datetime
-from app.utils.timezone import nowColombia
+from app.utils.timezone import nowNaive
 
 from app.domain.exceptions import (
     FuncionNotFoundError,
@@ -92,7 +92,7 @@ class FuncionService:
                     if factura.estadoFactura == EstadoFacturaEnum.PAGADA:
                         boleta_activa = "OCUPADA"
                     # RESERVADA y no expirada
-                    elif (factura.estadoFactura == EstadoFacturaEnum.RESERVADA and factura.fechaExpiracionReserva > nowColombia()):
+                    elif (factura.estadoFactura == EstadoFacturaEnum.RESERVADA and factura.fechaExpiracionReserva > nowNaive()):
                         boleta_activa = "RESERVADA"
             estado = boleta_activa or "DISPONIBLE"
             sillas_response.append({"sillaId": silla.id,
