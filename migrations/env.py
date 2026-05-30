@@ -3,11 +3,12 @@ from alembic import context
 import os
 import sys
 from dotenv import load_dotenv
-from app.infrastructure.models.base import Base
-
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 load_dotenv()
+
+from app.infrastructure.models.base import Base
+import app.infrastructure.models  # noqa: F401 — registra todos los modelos en Base.metadata
 
 config = context.config
 target_metadata = Base.metadata

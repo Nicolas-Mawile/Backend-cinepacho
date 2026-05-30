@@ -77,6 +77,32 @@ CinePacho
         self._enviar(msg, destinatario)
 
     # =========================================================
+    # RESET DE CONTRASEÑA (link)
+    # =========================================================
+
+    def enviar_reset_password(self, destinatario: str, link_reset: str):
+        asunto = "Restablece tu contraseña — CinePacho"
+        cuerpo = f"""\
+Hola,
+
+Recibimos una solicitud para restablecer la contraseña de tu cuenta.
+Para crear una nueva contraseña haz clic en el enlace:
+
+{link_reset}
+
+IMPORTANTE: Este enlace expira en 15 minutos.
+Si no solicitaste el cambio de contraseña, ignora este correo.
+
+CinePacho
+"""
+        msg = MIMEMultipart()
+        msg["From"] = settings.smtp_user or "no-reply@cinepacho.com"
+        msg["To"] = destinatario
+        msg["Subject"] = asunto
+        msg.attach(MIMEText(cuerpo, "plain"))
+        self._enviar(msg, destinatario)
+
+    # =========================================================
     # FACTURA Y BOLETAS (tras confirmar pago)
     # =========================================================
 

@@ -40,3 +40,34 @@ class AuthResponse(BaseModel):
     access_token: str
     token_type: str
     usuario: dict
+
+
+class SolicitarResetRequest(BaseModel):
+    correo: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    nueva_password: str = Field(..., min_length=8)
+    confirm_password: str
+
+    @field_validator("nueva_password")
+    @classmethod
+    def validate_password_complexity(cls, v: str):
+        if not any(c.isupper() for c in v):
+            raise ValueError("La contraseña debe contener al menos una mayúscula")
+
+        if not any(c.islower() for c in v):
+            raise ValueError("La contraseña debe contener al menos una minúscula")
+
+        if not any(c.isdigit() for c in v):
+            raise ValueError("La contraseña debe contener al menos un número")
+
+        return v
+
+    @field_validator("confirm_password")
+    @classmethod
+    def passwords_match(cls, v: str, info):
+        if "nueva_password" in info.data and v != info.data["nueva_password"]:
+            raise ValueError("Las contraseñas no coinciden")
+        return v
