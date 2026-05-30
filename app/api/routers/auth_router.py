@@ -13,7 +13,22 @@ from app.api.dependencies import get_current_user
 from app.infrastructure.models.cliente import Cliente
 from app.utils.timezone import nowNaive
 from app.infrastructure.models.recompensaBoleta import RecompensaBoleta
+from app.infrastructure.models.tipoSilla import TipoSilla
+
 router = APIRouter(prefix="/auth", tags=["Auth"])
+
+
+def _precios_sillas(db) -> dict:
+    """Devuelve los precios de boleta general y preferencial desde la BD."""
+    tipos = db.query(TipoSilla).all()
+    precios = {"precioBoletaGeneral": None, "precioBoletaPreferencial": None}
+    for t in tipos:
+        nombre = t.nombre.lower()
+        if nombre == "general":
+            precios["precioBoletaGeneral"] = t.precio
+        elif nombre == "preferencial":
+            precios["precioBoletaPreferencial"] = t.precio
+    return precios
 
 @router.post("/registro")
 def registro(datos: RegistroRequest, db: Session = Depends(get_db)):
@@ -109,6 +124,8 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
                 RecompensaBoleta.utilizada == False,
                 RecompensaBoleta.fechaVencimiento > nowNaive(),).count())
 
+    precios = _precios_sillas(db)
+
     return {
         "access_token": accessToken,
         "token_type": "bearer",
@@ -123,11 +140,13 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
             "multiplexId": contrato.multiplexId if contrato else None,
             "puntosAcumulados": (usuario.cliente.puntosAcumulados if usuario.cliente else None),
             "recompensasDisponibles": (recompensasDisponibles if usuario.cliente else 0),
+            "precioBoletaGeneral": precios["precioBoletaGeneral"],
+            "precioBoletaPreferencial": precios["precioBoletaPreferencial"],
         }
     }
 
 @router.get("/me")
-def me(user=Depends(get_current_user)):
+def me(user=Depends(get_current_user), db: Session = Depends(get_db)):
     """Devuelve los datos del usuario autenticado."""
     permisos = [permiso.nombre for permiso in user.rol.permisos]
     if user.cliente:
@@ -136,6 +155,7 @@ def me(user=Depends(get_current_user)):
         correo = user.empleado.correoLaboral
 
     contrato = user.empleado.contratoActivo if user.empleado else None
+    precios = _precios_sillas(db)
     return {
         "id": user.id,
         "nombres": user.nombres,
@@ -146,6 +166,8 @@ def me(user=Depends(get_current_user)):
         "empleado_id": user.empleado.id if user.empleado else None,
         "multiplexId": contrato.multiplexId if contrato else None,
         "puntosAcumulados": user.cliente.puntosAcumulados if user.cliente else None,
+        "precioBoletaGeneral": precios["precioBoletaGeneral"],
+        "precioBoletaPreferencial": precios["precioBoletaPreferencial"],
     }
 
 # def _buildUsuarioResponse(usuario: Usuario) -> dict:
