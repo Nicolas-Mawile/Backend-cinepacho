@@ -12,7 +12,7 @@ from app.domain.services.auth_service import AuthService
 from app.api.dependencies import get_current_user
 from app.infrastructure.models.cliente import Cliente
 from app.utils.timezone import nowColombia
-
+from app.infrastructure.models.recompensaBoleta import RecompensaBoleta
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/registro")
@@ -98,6 +98,16 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
         correo = usuario.empleado.correoLaboral
 
     contrato = usuario.empleado.contratoActivo if usuario.empleado else None
+    recompensasDisponibles = 0
+
+    if usuario.cliente:
+
+        recompensasDisponibles = (
+            db.query(RecompensaBoleta)
+            .filter(
+                RecompensaBoleta.clienteId == usuario.cliente.id,
+                RecompensaBoleta.utilizada == False,
+                RecompensaBoleta.fechaVencimiento > nowColombia(),).count())
 
     return {
         "access_token": accessToken,
@@ -112,6 +122,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
             "empleado_id": usuario.empleado.id if usuario.empleado else None,
             "multiplexId": contrato.multiplexId if contrato else None,
             "puntosAcumulados": (usuario.cliente.puntosAcumulados if usuario.cliente else None),
+            "recompensasDisponibles": (recompensasDisponibles if usuario.cliente else 0),
         }
     }
 

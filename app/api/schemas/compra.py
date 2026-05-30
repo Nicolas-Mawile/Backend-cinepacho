@@ -38,7 +38,7 @@ class PagarFacturaRequest(BaseModel):
     apellidos: str
     correo: str
     telefono: str
-
+    usarRecompensa: bool = False
 # =========================================================
 # DISPONIBILIDAD
 # =========================================================
@@ -205,3 +205,5 @@ class SolicitarPagoRequest(BaseModel):
     apellidos: str
     correo: EmailStr
     telefono: str
+
+    usarRecompensa: bool = False

@@ -15,4 +15,6 @@ class Pago(Base):
     fechaExpiracion = Column(DateTime, nullable=False)
 
     facturaId = Column(Integer, ForeignKey("facturas.id"), nullable=False)
+    recompensaId = Column(Integer, ForeignKey("recompensas_boleta.id"), nullable=True)
     factura = relationship("Factura", back_populates="pagos")
+    recompensa = relationship("RecompensaBoleta")

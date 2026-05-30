@@ -15,7 +15,7 @@ from app.infrastructure.repositories.pago_repository import PagoRepository
 from app.infrastructure.repositories.factura_repository import FacturaRepository
 from app.domain.services.email_service import EmailService
 from app.utils.timezone import nowColombia
-
+from app.infrastructure.models.recompensaBoleta import RecompensaBoleta
 
 class PagoService:
     """
@@ -38,7 +38,7 @@ class PagoService:
         self,
         factura_id: int,
         metodo_pago: str,
-
+        usarRecompensa : bool,
         nombres: str,
         apellidos: str,
         correo: str,
@@ -104,27 +104,28 @@ class PagoService:
 
             # Asociar cliente a factura
             factura.clienteId = cliente.id
-
-            # ─────────────────────────────────────────────────────
-            # Validar pago con puntos
-            # ─────────────────────────────────────────────────────
-
-            usar_puntos = metodo_pago.lower() == "puntos"
-
+            recompensa = None
             boleta_general = None
 
-            if usar_puntos:
+            if usarRecompensa:
 
-                if cliente.puntosAcumulados < 100:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="No tiene suficientes puntos (necesita 100)",
+                recompensa = (
+                    self.db.query(RecompensaBoleta)
+                    .filter(
+                        RecompensaBoleta.clienteId == cliente.id,
+                        RecompensaBoleta.utilizada == False,
+                        RecompensaBoleta.fechaVencimiento > nowColombia(),
                     )
+                    .first()
+                )
+                if recompensa:
+                    for detalle in factura.detalles:
 
-                # Buscar boleta GENERAL
-                for detalle in factura.detalles:
+                        if not detalle.boleta:
+                            continue
 
-                    if detalle.boleta and detalle.boleta.silla:
+                        if not detalle.boleta.silla:
+                            continue
 
                         tipo_silla = detalle.boleta.silla.tipoSilla
 
@@ -135,19 +136,49 @@ class PagoService:
                             boleta_general = detalle
                             break
 
+                    if not boleta_general:
+
+                        raise HTTPException(
+                            status_code=400,
+                            detail=(
+                                "La recompensa solo puede "
+                                "aplicarse a boletas GENERAL"
+                            ),
+                        )
+
+                for detalle in factura.detalles:
+
+                    if not detalle.boleta:
+                        continue
+
+                    if not detalle.boleta.silla:
+                        continue
+
+                    tipo_silla = detalle.boleta.silla.tipoSilla
+
+                    if (
+                        tipo_silla
+                        and tipo_silla.nombre.lower() == "general"
+                    ):
+                        boleta_general = detalle
+                        break
+
                 if not boleta_general:
+
                     raise HTTPException(
                         status_code=400,
-                        detail="No hay boletas GENERAL para redimir puntos",
+                        detail=(
+                            "La recompensa solo puede "
+                            "utilizarse en boletas GENERAL"
+                        ),
                     )
-
             # ─────────────────────────────────────────────────────
             # Calcular monto final
             # ─────────────────────────────────────────────────────
 
             monto_pago = factura.total
 
-            if usar_puntos and boleta_general:
+            if recompensa and boleta_general:
 
                 monto_pago = max(
                     0.0,
@@ -165,6 +196,7 @@ class PagoService:
                 fechaPago=None,
                 fechaExpiracion=factura.fechaExpiracionReserva,
                 facturaId=factura.id,
+                recompensaId=(recompensa.id if recompensa else None),
             )
 
             self.pago_repository.add(pago)
@@ -292,6 +324,10 @@ class PagoService:
             # ─── Aprobar pago ─────────────────────────────────────
             pago.estado = EstadoPagoEnum.PAGADO
             pago.fechaPago = nowColombia()     
+            if pago.recompensa:
+                pago.recompensa.utilizada = True
+                if factura.cliente:
+                    factura.cliente.puntosAcumulados = 0
 
             # ─── Marcar factura como pagada ───────────────────────
             factura.estadoFactura = EstadoFacturaEnum.PAGADA
@@ -311,13 +347,36 @@ class PagoService:
                 puntos_ganados += 5
 
             if cliente:
-                # Si se pagó con puntos, descontar 100 primero
-                if pago.metodoPago.lower() == "puntos":
-                    cliente.puntosAcumulados = max(0, cliente.puntosAcumulados - 100)
+                puntos_anteriores = cliente.puntosAcumulados
+                cliente.puntosAcumulados = min(100, cliente.puntosAcumulados + puntos_ganados)
 
-                # Acumular puntos ganados en esta compra
-                cliente.puntosAcumulados += puntos_ganados
-                # ← SIN min(): los puntos pueden seguir acumulándose
+                recompensa_activa = (
+                    self.db.query(RecompensaBoleta)
+                    .filter(
+                        RecompensaBoleta.clienteId == cliente.id,
+                        RecompensaBoleta.utilizada == False,
+                        RecompensaBoleta.fechaVencimiento > nowColombia(),
+                    )
+                    .first()
+                )
+
+                if (
+                    puntos_anteriores < 100
+                    and cliente.puntosAcumulados == 100
+                    and not recompensa_activa
+                ):
+
+                    recompensa = RecompensaBoleta(
+                        clienteId=cliente.id,
+                        fechaOtorgamiento=nowColombia(),
+                        fechaVencimiento=(
+                            nowColombia()
+                            + timedelta(days=180)
+                        ),
+                        utilizada=False,
+                    )
+
+                    self.db.add(recompensa)
 
             self.db.commit()
             self.db.refresh(factura)

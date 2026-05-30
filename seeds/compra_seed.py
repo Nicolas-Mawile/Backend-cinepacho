@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import select
 
 from app.database import SessionLocal
-
+from app.utils.timezone import nowColombia
 from app.infrastructure.models.factura import Factura
 from app.infrastructure.models.detalleFactura import DetalleFactura
 from app.infrastructure.models.boleta import Boleta
@@ -158,14 +158,15 @@ def create_pago(
         estado=estado,
         metodoPago=random.choice(METODOS_PAGO),
         fechaPago=(
-            datetime.now()
+            nowColombia()
             if estado == EstadoPagoEnum.PAGADO
             else None
         ),
         fechaExpiracion=(
-            datetime.now()
+            nowColombia()
             + timedelta(minutes=15)
-        )
+        ),
+        recompensaId=None,
     )
 
     db.add(pago)

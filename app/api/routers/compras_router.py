@@ -121,6 +121,7 @@ def solicitar_pago(
         return service.pagar(
             factura_id=factura_id,
             metodo_pago=request.metodoPago,
+            usarRecompensa= request.usarRecompensa,
 
             nombres=request.nombres,
             apellidos=request.apellidos,

@@ -24,3 +24,4 @@ class Cliente(Base, Persona):
     empleado = relationship("Empleado", back_populates="cliente", uselist=False) 
     evaluaciones = relationship("Evaluacion", back_populates="cliente")
     facturas = relationship("Factura", back_populates="cliente", cascade="all")
+    recompensas = relationship("RecompensaBoleta", back_populates="cliente",cascade="all, delete-orphan")

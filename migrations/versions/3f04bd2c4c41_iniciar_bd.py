@@ -1,16 +1,16 @@
 """Alembic migration script template."""
-"""inicio BD
+"""Iniciar BD
 
-Revision ID: 550dff83f5a1
+Revision ID: 3f04bd2c4c41
 Revises: 
-Create Date: 2026-05-29 09:05:00.254825
+Create Date: 2026-05-30 09:30:03.248260
 """
 
 from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = '550dff83f5a1'
+revision = '3f04bd2c4c41'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -137,6 +137,15 @@ def upgrade():
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('multiplexId', 'peliculaId', name='uq_multiplex_pelicula')
     )
+    op.create_table('recompensas_boleta',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('clienteId', sa.Integer(), nullable=False),
+    sa.Column('fechaOtorgamiento', sa.DateTime(), nullable=False),
+    sa.Column('fechaVencimiento', sa.DateTime(), nullable=False),
+    sa.Column('utilizada', sa.Boolean(), nullable=False),
+    sa.ForeignKeyConstraint(['clienteId'], ['clientes.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('rol_permiso',
     sa.Column('rol_id', sa.Integer(), nullable=False),
     sa.Column('permiso_id', sa.Integer(), nullable=False),
@@ -188,7 +197,9 @@ def upgrade():
     sa.Column('fechaPago', sa.DateTime(), nullable=True),
     sa.Column('fechaExpiracion', sa.DateTime(), nullable=False),
     sa.Column('facturaId', sa.Integer(), nullable=False),
+    sa.Column('recompensaId', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['facturaId'], ['facturas.id'], ),
+    sa.ForeignKeyConstraint(['recompensaId'], ['recompensas_boleta.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('sillas',
@@ -302,6 +313,7 @@ def downgrade():
     op.drop_table('contratos')
     op.drop_table('salas')
     op.drop_table('rol_permiso')
+    op.drop_table('recompensas_boleta')
     op.drop_table('multiplex_cartelera')
     op.drop_table('facturas')
     op.drop_table('empleados')
