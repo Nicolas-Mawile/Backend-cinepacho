@@ -57,7 +57,7 @@ class EmpleadoService:
         if cargo == CargoEnum.cajero:
             roleName = (RoleEnum.EMPLEADO_CAJERO.value)
 
-        elif cargo in [CargoEnum.aseador, CargoEnum.despachador_comida]:
+        elif cargo in [CargoEnum.aseador, CargoEnum.despachador_comida, CargoEnum.encargadoSala]:
             roleName = (RoleEnum.EMPLEADO_OTRO.value)
 
         elif cargo == CargoEnum.administrador:

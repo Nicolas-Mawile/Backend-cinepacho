@@ -350,7 +350,7 @@ def run():
                     ))
                     db.flush()
 
-                    cliente.puntosAcumulados += 5 * len(snack_items)
+                    cliente.puntosAcumulados = min(100, cliente.puntosAcumulados + 5 * len(snack_items))
                     db.flush()
 
                 # ── EVALUACIONES DE SERVICIOS ─────────────────────────────────
