@@ -242,9 +242,8 @@ class EmpleadoService:
 
         hoy = date.today()
 
-        diasTranscurridos = (
-            hoy - contratoActual.fechaInicio
-        ).days
+        fechaContratacion = min(c.fechaInicio for c in empleado.contratos)
+        diasTranscurridos = (hoy - fechaContratacion).days
 
         if diasTranscurridos < 90:
 
@@ -409,7 +408,8 @@ class EmpleadoService:
                 raise ValueError("El empleado no tiene contrato activo")
 
             hoy = date.today()
-            diasTranscurridos = (hoy - contratoActual.fechaInicio).days
+            fechaContratacion = min(c.fechaInicio for c in empleado.contratos)
+            diasTranscurridos = (hoy - fechaContratacion).days
 
             if diasTranscurridos < 90:
                 raise ValueError(

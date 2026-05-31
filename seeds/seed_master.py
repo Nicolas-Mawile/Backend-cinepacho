@@ -22,23 +22,30 @@ from seeds.reporte_seed import run as reporte_seed
 
 
 def run():
-    permisos_seed()
-    roles_seed()
-    roles_permisos_seed()
-    tipo_silla_seed()
-    multiplex_seed()
-    salas_seed()
-    pelicula_seed()
-    multiplex_cartelera_seed()
-    funcion_seed()           # genera funciones: -14 días hasta +3 días
-    comidas_seed()
-    clientes_seed()          # Juan, Laura y Nicolas
-    empleados_seed()         # 12 empleados en los 6 multiplex
-    admin_seed()
-    servicios_seed()
-    evaluacion_seed()        # compras + evaluaciones de los 3 clientes
-    compra_seed()            # 80 facturas aleatorias distribuidas en mayo
-    reporte_seed()           # ajusta antigüedad histórica de contratos
+    seeds = [
+        ("permisos",            permisos_seed),
+        ("roles",               roles_seed),
+        ("roles_permisos",      roles_permisos_seed),
+        ("tipo_silla",          tipo_silla_seed),
+        ("multiplex",           multiplex_seed),
+        ("salas",               salas_seed),
+        ("peliculas",           pelicula_seed),
+        ("multiplex_cartelera", multiplex_cartelera_seed),
+        ("funciones",           funcion_seed),
+        ("comidas",             comidas_seed),
+        ("clientes",            clientes_seed),
+        ("empleados",           empleados_seed),
+        ("admin",               admin_seed),
+        ("servicios",           servicios_seed),
+        ("evaluacion",          evaluacion_seed),
+        ("compras",             compra_seed),
+        ("reporte",             reporte_seed),
+    ]
+    for nombre, fn in seeds:
+        try:
+            fn()
+        except Exception as e:
+            print(f"⚠️  seed '{nombre}' falló: {e}")
 
 if __name__ == "__main__":
     run()
