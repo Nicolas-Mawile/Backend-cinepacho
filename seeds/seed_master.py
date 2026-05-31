@@ -19,6 +19,7 @@ from seeds.servicios_seed import run as servicios_seed
 from seeds.evaluacion_seed import run as evaluacion_seed
 from seeds.compra_seed import run as compra_seed
 from seeds.reporte_seed import run as reporte_seed
+from seeds.recompensas_seed import run as recompensas_seed
 
 
 def run():
@@ -40,6 +41,7 @@ def run():
         ("evaluacion",          evaluacion_seed),
         ("compras",             compra_seed),
         ("reporte",             reporte_seed),
+        ("recompensas",         recompensas_seed),
     ]
     for nombre, fn in seeds:
         try:

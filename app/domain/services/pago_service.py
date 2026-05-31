@@ -182,10 +182,11 @@ class PagoService:
 
             if recompensa and boleta_general:
 
-                monto_pago = max(
-                    0.0,
-                    monto_pago - boleta_general.subTotal,
-                )
+                descuento_recompensa = min(boleta_general.subTotal, factura.total)
+                monto_pago = max(0.0, factura.total - descuento_recompensa)
+                factura.descuento += descuento_recompensa
+                factura.total = monto_pago
+                print(f"[PAGAR] Recompensa aplicada: -{descuento_recompensa} → total={monto_pago}")
 
             # ─────────────────────────────────────────────────────
             # Crear pago pendiente

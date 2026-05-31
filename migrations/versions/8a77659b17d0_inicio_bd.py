@@ -1,16 +1,16 @@
 """Alembic migration script template."""
 """inicio BD
 
-Revision ID: 67b6e9d3f10d
+Revision ID: 8a77659b17d0
 Revises: 
-Create Date: 2026-05-31 05:45:57.521854
+Create Date: 2026-05-31 15:01:33.975637
 """
 
 from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = '67b6e9d3f10d'
+revision = '8a77659b17d0'
 down_revision = None
 branch_labels = None
 depends_on = None
