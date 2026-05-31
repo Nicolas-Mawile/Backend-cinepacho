@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from datetime import datetime
-from app.api.dependencies import requirePermission
+from app.api.dependencies import requirePermission, requireRole
 from app.database import SessionLocal
 from app.infrastructure.repositories.silla_repository import SillaRepository
 from app.domain.services.sala_service import SalaService
@@ -13,10 +13,12 @@ from app.infrastructure.models.factura import Factura
 from app.infrastructure.models.EstadoFacturaEnum import EstadoFacturaEnum
 from app.infrastructure.models.silla import Silla
 from app.infrastructure.models.detalleFactura import DetalleFactura
-from app.api.schemas.compra import DisponibilidadSillaResponse
+from app.infrastructure.models.tipoSilla import TipoSilla
+from app.api.schemas.compra import DisponibilidadSillaResponse, ActualizarPreciosSillasRequest, PreciosSillasResponse
 from app.domain.services.checkout_service import CheckoutService
 from app.api.routers.compras_router import get_checkout_service
 from app.utils.timezone import nowColombia
+from app.domain.constants.roles import RoleEnum
 
 
 router = APIRouter(tags=["Sillas"])
@@ -259,3 +261,58 @@ def obtener_disponibilidad_sillas(
             status_code=500,
             detail=str(e)
         )
+
+
+def get_db_session():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@router.patch(
+    "/tipos-silla/precios",
+    response_model=PreciosSillasResponse,
+    summary="Actualizar precios de sillas",
+    responses={
+        200: {"description": "Precios actualizados correctamente"},
+        400: {"description": "Debe enviar al menos un precio para actualizar"},
+        404: {"description": "Tipo de silla no encontrado en BD"},
+    },
+)
+def actualizar_precios_sillas(
+    data: ActualizarPreciosSillasRequest,
+    db=Depends(get_db_session),
+    _: Usuario = Depends(requireRole([RoleEnum.ADMIN_GENERAL])),
+):
+    if data.precioGeneral is None and data.precioPreferencial is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Debe enviar al menos un precio para actualizar",
+        )
+
+    tipos = db.query(TipoSilla).all()
+    mapa = {t.nombre.upper(): t for t in tipos}
+
+    if "GENERAL" not in mapa or "PREFERENCIAL" not in mapa:
+        raise HTTPException(
+            status_code=404,
+            detail="No se encontraron los tipos de silla en la base de datos",
+        )
+
+    if data.precioGeneral is not None:
+        mapa["GENERAL"].precio = data.precioGeneral
+
+    if data.precioPreferencial is not None:
+        mapa["PREFERENCIAL"].precio = data.precioPreferencial
+
+    db.commit()
+    db.refresh(mapa["GENERAL"])
+    db.refresh(mapa["PREFERENCIAL"])
+
+    return PreciosSillasResponse(
+        precioGeneral=mapa["GENERAL"].precio,
+        precioPreferencial=mapa["PREFERENCIAL"].precio,
+        mensaje="Precios actualizados correctamente",
+    )

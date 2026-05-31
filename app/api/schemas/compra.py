@@ -207,3 +207,18 @@ class SolicitarPagoRequest(BaseModel):
     telefono: str
 
     usarRecompensa: bool = False
+
+
+# =========================================================
+# PRECIOS DE SILLAS
+# =========================================================
+
+class ActualizarPreciosSillasRequest(BaseModel):
+    precioGeneral: Optional[float] = Field(default=None, gt=0)
+    precioPreferencial: Optional[float] = Field(default=None, gt=0)
+
+
+class PreciosSillasResponse(BaseModel):
+    precioGeneral: float
+    precioPreferencial: float
+    mensaje: str

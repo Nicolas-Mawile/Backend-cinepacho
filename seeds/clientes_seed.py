@@ -12,15 +12,25 @@ CLIENTES = [
         "apellidos": "Gómez",
         "correo": "juan@gmail.com",
         "telefono": "3000001111",
-        "password": "Password123"
+        "password": "Password123",
+        "puntosAcumulados": 0,
     },
     {
         "nombres": "Laura",
         "apellidos": "Ramírez",
         "correo": "laura@gmail.com",
         "telefono": "3000002222",
-        "password": "Password123"
-    }
+        "password": "Password123",
+        "puntosAcumulados": 0,
+    },
+    {
+        "nombres": "Nicolas",
+        "apellidos": "Castro Rivera",
+        "correo": "nicolascr333@gmail.com",
+        "telefono": "3100001111",
+        "password": "Password123",
+        "puntosAcumulados": 80,
+    },
 ]
 
 def run():
@@ -35,8 +45,14 @@ def run():
             # ==================================
             # CLIENTE
             # ==================================
-            cliente = Cliente(nombres=data["nombres"], apellidos=data["apellidos"], correo=data["correo"],
-                              telefono=data["telefono"], activo=True)
+            cliente = Cliente(
+                nombres=data["nombres"],
+                apellidos=data["apellidos"],
+                correo=data["correo"],
+                telefono=data["telefono"],
+                activo=True,
+                puntosAcumulados=data.get("puntosAcumulados", 0),
+            )
             db.add(cliente)
             db.flush()
 

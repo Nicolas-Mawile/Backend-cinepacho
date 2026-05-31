@@ -21,8 +21,8 @@ HORARIOS_BASE = [
     (20, 0),
 ]
 
-DIAS_GENERAR = 3
-
+DIAS_PASADOS  = 14   # genera funciones de las últimas 2 semanas
+DIAS_FUTUROS  = 3    # genera funciones para los próximos 3 días
 MINUTOS_LIMPIEZA = 20
 
 
@@ -195,7 +195,7 @@ def run():
 
                 pelicula_index = 0
 
-                for dia in range(DIAS_GENERAR):
+                for dia in range(-DIAS_PASADOS, DIAS_FUTUROS + 1):
 
                     fecha_base = hoy + timedelta(days=dia)
 

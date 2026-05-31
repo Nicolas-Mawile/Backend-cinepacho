@@ -25,7 +25,7 @@ from app.infrastructure.models.EstadoPagoEnum import (
 )
 
 
-CANTIDAD_FACTURAS = 25
+CANTIDAD_FACTURAS = 80
 
 METODOS_PAGO = [
     "TARJETA",
@@ -295,7 +295,7 @@ def run():
                     fechaCreacion=(
                         datetime.now()
                         - timedelta(
-                            days=random.randint(0, 7)
+                            days=random.randint(0, 30)
                         )
                     ),
                     fechaExpiracionReserva=(
