@@ -228,9 +228,11 @@ def run():
                 "\n🛒 Iniciando seed compras...\n"
             )
 
+            CORREOS_SEED = {"juan@gmail.com", "laura@gmail.com", "nicolascr333@gmail.com"}
             clientes = db.execute(
                 select(Cliente).where(
-                    Cliente.estaActivo == True
+                    Cliente.estaActivo == True,
+                    Cliente.correo.in_(CORREOS_SEED),
                 )
             ).scalars().all()
 

@@ -54,22 +54,16 @@ async def lifespan(app: FastAPI):
     )
 
     # ==========================================
-    # SEEDS
+    # SEEDS (deshabilitado — BD ya poblada)
     # ==========================================
 
-    try:
-
-        from seeds.seed_master import run as seed_all
-        from seeds.configuracion import run as seed_config
-
-        seed_all()
-        seed_config()
-
-    except Exception as e:
-
-        print(
-            f"Error al ejecutar seeds: {e}"
-        )
+    # try:
+    #     from seeds.seed_master import run as seed_all
+    #     from seeds.configuracion import run as seed_config
+    #     seed_all()
+    #     seed_config()
+    # except Exception as e:
+    #     print(f"Error al ejecutar seeds: {e}")
 
     # ==========================================
     # TASKS BACKGROUND
