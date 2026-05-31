@@ -1,9 +1,9 @@
 """Checkout service — reserva de sillas y snacks."""
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
-from app.utils.timezone import nowColombia
+from app.utils.timezone import nowNaive
 
 from app.config import settings
 from app.infrastructure.models.factura import Factura
@@ -136,14 +136,8 @@ class CheckoutService:
                     raise HTTPException(status_code=400, detail="La función está inactiva")
 
                 # Cierre de ventas: no se puede comprar después del inicio
-                now = nowColombia()
-                fecha_funcion = funcion.fechaHora
-                # convertir a timezone-aware si viene naive desde la BD
-                if fecha_funcion.tzinfo is None:
-                    fecha_funcion = fecha_funcion.replace(tzinfo=timezone.utc)
-
-                # permitir compras hasta 20 minutos después del inicio
-                limite_compra = fecha_funcion + timedelta(minutes=20)
+                now = nowNaive()
+                limite_compra = funcion.fechaHora + timedelta(minutes=20)
 
                 if now > limite_compra:
                     raise HTTPException(status_code=400, detail="La función ya no permite compras",)
@@ -154,8 +148,8 @@ class CheckoutService:
                 subTotal=0,
                 descuento=0,
                 total=0,
-                fechaCreacion=nowColombia(),          # ← corregido typo
-                fechaExpiracionReserva=nowColombia() + timedelta(minutes=10),
+                fechaCreacion=nowNaive(),          # ← corregido typo
+                fechaExpiracionReserva=nowNaive() + timedelta(minutes=10),
                 codigoTransaccion=str(uuid.uuid4()),
                 estadoFactura=EstadoFacturaEnum.RESERVADA,
             )
@@ -191,11 +185,14 @@ class CheckoutService:
                         )
 
                     precio_base = silla.tipoSilla.precio
+                    dia_semana = funcion.fechaHora.weekday()
                     # Promoción martes (1) y miércoles (2): mitad de precio
-                    if funcion.fechaHora.weekday() in [1, 2]:
+                    if dia_semana in [1, 2]:
                         precio = int(precio_base / 2)
+                        print(f"[CHECKOUT] Silla {silla_id} | tipoSilla='{silla.tipoSilla.nombre}' | precio_base={precio_base} | dia_semana={dia_semana} (mar/mie) → precio con 50% dto={precio}")
                     else:
                         precio = precio_base
+                        print(f"[CHECKOUT] Silla {silla_id} | tipoSilla='{silla.tipoSilla.nombre}' | precio_base={precio_base} | dia_semana={dia_semana} → sin descuento, precio={precio}")
 
                     boleta = Boleta(
                         funcionId=funcion_id,
@@ -259,6 +256,15 @@ class CheckoutService:
             subtotal_total = total_boletas + subtotal_snacks
             total_final = total_boletas + subtotal_snacks_con_descuento
 
+            print(f"[CHECKOUT] ── RESUMEN DE TOTALES ──────────────────────")
+            print(f"[CHECKOUT]   total_boletas            = {total_boletas}")
+            print(f"[CHECKOUT]   subtotal_snacks          = {subtotal_snacks}")
+            print(f"[CHECKOUT]   subtotal_snacks_dto      = {subtotal_snacks_con_descuento}")
+            print(f"[CHECKOUT]   descuento_snacks         = {descuento_snacks}")
+            print(f"[CHECKOUT]   subtotal (sin dto)       = {subtotal_total}")
+            print(f"[CHECKOUT]   total_final (a pagar)    = {total_final}")
+            print(f"[CHECKOUT] ────────────────────────────────────────────")
+
             factura.subTotal = subtotal_total
             factura.descuento = descuento_snacks
             factura.total = total_final
@@ -312,7 +318,7 @@ class CheckoutService:
         )
 
         response = []
-        now = nowColombia()
+        now = nowNaive()
         for silla in sillas:
             boleta = (
                 self.db.query(Boleta)

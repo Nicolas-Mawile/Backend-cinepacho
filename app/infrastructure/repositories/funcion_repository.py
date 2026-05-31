@@ -68,17 +68,20 @@ class FuncionRepository:
     def exists(self, entity_id: int) -> bool:
         return self.get(entity_id) is not None
 
-    def hay_solapamiento(self, sala_id: int, inicio: datetime, fin: datetime, excluir_id: int = None) -> bool:
+    def hay_solapamiento(self, sala_id: int, inicio: datetime, fin: datetime, excluir_id: int = None) -> "Funcion | None":
+        """Devuelve la funcion que solapa, o None si no hay conflicto."""
         stmt = select(Funcion).where(
             and_(
                 Funcion.salaId == sala_id,
                 Funcion.estaActiva == True,
                 Funcion.fechaHora < fin,
-                Funcion.fechaHoraFin > inicio, ))
+                Funcion.fechaHoraFin > inicio,
+            )
+        )
         if excluir_id:
             stmt = stmt.where(Funcion.id != excluir_id)
         result = self.db.execute(stmt.limit(1))
-        return result.scalar_one_or_none() is not None
+        return result.scalar_one_or_none()
 
     def _query_detallada(self, stmt):
         result = self.db.execute(

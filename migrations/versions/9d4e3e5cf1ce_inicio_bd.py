@@ -1,16 +1,16 @@
 """Alembic migration script template."""
-"""Iniciar BD
+"""inicio BD
 
-Revision ID: 3f04bd2c4c41
+Revision ID: 9d4e3e5cf1ce
 Revises: 
-Create Date: 2026-05-30 09:30:03.248260
+Create Date: 2026-05-30 15:45:03.854567
 """
 
 from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = '3f04bd2c4c41'
+revision = '9d4e3e5cf1ce'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -98,6 +98,15 @@ def upgrade():
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('nombre')
     )
+    op.create_table('tokens_revocados',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('jti', sa.String(), nullable=False),
+    sa.Column('expiresAt', sa.DateTime(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_tokens_revocados_jti'), 'tokens_revocados', ['jti'], unique=True)
     op.create_table('empleados',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('codigoEmpleado', sa.String(), nullable=False),
@@ -317,6 +326,8 @@ def downgrade():
     op.drop_table('multiplex_cartelera')
     op.drop_table('facturas')
     op.drop_table('empleados')
+    op.drop_index(op.f('ix_tokens_revocados_jti'), table_name='tokens_revocados')
+    op.drop_table('tokens_revocados')
     op.drop_table('tipoSilla')
     op.drop_table('servicios')
     op.drop_table('rol')

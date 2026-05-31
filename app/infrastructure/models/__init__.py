@@ -19,6 +19,7 @@ from .permiso import Permiso
 from .persona import Persona
 from .recompensaBoleta import RecompensaBoleta
 from .refrescar_token import RefreshToken
+from .token_revocado import TokenRevocado
 from .rol_permiso import rol_permiso
 from .rol import Rol
 from .sala import Sala

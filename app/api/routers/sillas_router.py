@@ -19,7 +19,7 @@ from app.api.routers.compras_router import get_checkout_service
 from app.utils.timezone import nowColombia
 
 
-router = APIRouter(prefix="/api/v1", tags=["Sillas"])
+router = APIRouter(tags=["Sillas"])
 
 
 def get_silla_repository():

@@ -22,6 +22,7 @@ from app.infrastructure.models.usuario import (
 )
 
 from app.infrastructure.models.rol import Rol
+from app.infrastructure.models.token_revocado import TokenRevocado
 
 
 # =========================================================
@@ -72,6 +73,10 @@ def get_current_user(
 
         if userId is None:
 
+            raise invalidTokenException
+
+        jti = payload.get("jti")
+        if jti and db.query(TokenRevocado).filter(TokenRevocado.jti == jti).first():
             raise invalidTokenException
 
     except JWTError:
@@ -132,6 +137,10 @@ def getCurrentUserOptional(
 
         if userId is None:
 
+            return None
+
+        jti = payload.get("jti")
+        if jti and db.query(TokenRevocado).filter(TokenRevocado.jti == jti).first():
             return None
 
     except JWTError:

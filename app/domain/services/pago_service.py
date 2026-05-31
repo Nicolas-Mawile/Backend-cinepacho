@@ -14,7 +14,7 @@ from app.infrastructure.models.EstadoPagoEnum import EstadoPagoEnum
 from app.infrastructure.repositories.pago_repository import PagoRepository
 from app.infrastructure.repositories.factura_repository import FacturaRepository
 from app.domain.services.email_service import EmailService
-from app.utils.timezone import nowColombia
+from app.utils.timezone import nowColombia, nowNaive
 from app.infrastructure.models.recompensaBoleta import RecompensaBoleta
 
 class PagoService:
@@ -45,6 +45,7 @@ class PagoService:
         telefono: str,
     ):
         try:
+            print(f"[PAGAR] usarRecompensa={usarRecompensa}")
 
             factura = self.factura_repository.get_by_id(factura_id)
 
@@ -68,7 +69,7 @@ class PagoService:
             # Validar expiración
             # ─────────────────────────────────────────────────────
 
-            if factura.fechaExpiracionReserva < nowColombia():
+            if factura.fechaExpiracionReserva < nowNaive():
 
                 factura.estadoFactura = EstadoFacturaEnum.CANCELADA
 
@@ -108,16 +109,17 @@ class PagoService:
             boleta_general = None
 
             if usarRecompensa:
-
+                print(f"[PAGAR] usarRecompensa=True → buscando recompensa para clienteId={cliente.id}")
                 recompensa = (
                     self.db.query(RecompensaBoleta)
                     .filter(
                         RecompensaBoleta.clienteId == cliente.id,
                         RecompensaBoleta.utilizada == False,
-                        RecompensaBoleta.fechaVencimiento > nowColombia(),
+                        RecompensaBoleta.fechaVencimiento > nowNaive(),
                     )
                     .first()
                 )
+                print(f"[PAGAR] recompensa encontrada={recompensa}  id={recompensa.id if recompensa else None}")
                 if recompensa:
                     for detalle in factura.detalles:
 
@@ -312,7 +314,7 @@ class PagoService:
                     detail="El pago ya fue procesado",
                 )
 
-            if pago.fechaExpiracion < nowColombia():
+            if pago.fechaExpiracion < nowNaive():
                 pago.estado = EstadoPagoEnum.EXPIRADO
                 pago.factura.estadoFactura = EstadoFacturaEnum.CANCELADA
                 self.db.commit()
@@ -321,13 +323,21 @@ class PagoService:
             factura = pago.factura
             cliente = factura.cliente
 
+            print(f"[CONFIRMAR] pagoId={pago.id}  recompensaId={pago.recompensaId}  pago.recompensa={pago.recompensa}")
+            print(f"[CONFIRMAR] factura.clienteId={factura.clienteId}  factura.cliente={factura.cliente}")
+            if factura.cliente:
+                print(f"[CONFIRMAR] puntosAcumulados ANTES del reset = {factura.cliente.puntosAcumulados}")
+
             # ─── Aprobar pago ─────────────────────────────────────
             pago.estado = EstadoPagoEnum.PAGADO
-            pago.fechaPago = nowColombia()     
+            pago.fechaPago = nowNaive()
             if pago.recompensa:
                 pago.recompensa.utilizada = True
                 if factura.cliente:
                     factura.cliente.puntosAcumulados = 0
+                    print(f"[CONFIRMAR] ✓ Recompensa usada → puntos reseteados a 0")
+                else:
+                    print(f"[CONFIRMAR] ✗ pago.recompensa existe PERO factura.cliente es None — reset no aplicado")
 
             # ─── Marcar factura como pagada ───────────────────────
             factura.estadoFactura = EstadoFacturaEnum.PAGADA
@@ -346,7 +356,7 @@ class PagoService:
             if tiene_snacks:
                 puntos_ganados += 5
 
-            if cliente:
+            if cliente and not pago.recompensa:
                 puntos_anteriores = cliente.puntosAcumulados
                 cliente.puntosAcumulados = min(100, cliente.puntosAcumulados + puntos_ganados)
 
@@ -355,7 +365,7 @@ class PagoService:
                     .filter(
                         RecompensaBoleta.clienteId == cliente.id,
                         RecompensaBoleta.utilizada == False,
-                        RecompensaBoleta.fechaVencimiento > nowColombia(),
+                        RecompensaBoleta.fechaVencimiento > nowNaive(),
                     )
                     .first()
                 )
@@ -368,9 +378,9 @@ class PagoService:
 
                     recompensa = RecompensaBoleta(
                         clienteId=cliente.id,
-                        fechaOtorgamiento=nowColombia(),
+                        fechaOtorgamiento=nowNaive(),
                         fechaVencimiento=(
-                            nowColombia()
+                            nowNaive()
                             + timedelta(days=180)
                         ),
                         utilizada=False,
@@ -378,6 +388,10 @@ class PagoService:
 
                     self.db.add(recompensa)
 
+            if cliente:
+                print(f"[CONFIRMAR] ── PUNTOS FINALES antes del commit ──")
+                print(f"[CONFIRMAR]   clienteId={cliente.id}  puntosAcumulados={cliente.puntosAcumulados}")
+                print(f"[CONFIRMAR]   recompensa usada={bool(pago.recompensa)}")
             self.db.commit()
             self.db.refresh(factura)
 
