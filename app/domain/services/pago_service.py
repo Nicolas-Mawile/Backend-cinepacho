@@ -235,24 +235,21 @@ class PagoService:
             # Enviar email
             # ─────────────────────────────────────────────────────
 
-            # try:
             print("\n===== ENVIO DE CONFIRMACION =====")
-            print("Correo recibido:", correo)
-            print("Link:", link_confirmacion)
-            print("SMTP_USER:", settings.smtp_user)
+            print(f"[EMAIL] Destinatario : {correo}")
+            print(f"[EMAIL] SMTP_USER    : {settings.smtp_user}")
+            print(f"[EMAIL] SMTP_SERVER  : {settings.smtp_server}:{settings.smtp_port}")
+            print(f"[EMAIL] Link         : {link_confirmacion}")
             print("=================================\n")
 
-            self.email_service.enviar_confirmacion_pago(
-                destinatario=correo,
-                link_confirmacion=link_confirmacion,
-            )
-
-            # except Exception as email_error:
-
-            #     print(
-            #         f"[ADVERTENCIA] "
-            #         f"No se pudo enviar el email: {email_error}"
-            #     )
+            try:
+                self.email_service.enviar_confirmacion_pago(
+                    destinatario=correo,
+                    link_confirmacion=link_confirmacion,
+                )
+                print(f"[EMAIL] ✓ Correo de confirmación enviado a {correo}")
+            except Exception as email_error:
+                print(f"[EMAIL] ✗ Falló el envío del correo: {repr(email_error)}")
 
             # ─────────────────────────────────────────────────────
             # Commit final
@@ -403,13 +400,15 @@ class PagoService:
                     else None
                 )
                 if correo_destino:
+                    print(f"[EMAIL] Enviando factura #{factura.id} a {correo_destino}")
                     try:
                         self.email_service.enviar_factura_y_boletas(
                             destinatario=correo_destino,
                             factura=factura,
                         )
+                        print(f"[EMAIL] ✓ Factura #{factura.id} enviada a {correo_destino}")
                     except Exception as email_error:
-                        print(f"[ADVERTENCIA] No se pudo enviar la factura: {email_error}")
+                        print(f"[EMAIL] ✗ Falló el envío de factura #{factura.id}: {repr(email_error)}")
 
             return {
                 "mensaje": "Pago confirmado correctamente",

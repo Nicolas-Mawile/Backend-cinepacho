@@ -216,10 +216,12 @@ def create_sillas_if_needed(
     db.commit()
 
 
+CODIGOS_SEED = {d["codigo"] for d in MULTIPLEX_DATA}
+
 def validate_integrity(db: Session):
 
     multiplexes = db.execute(
-        select(Multiplex)
+        select(Multiplex).where(Multiplex.codigo.in_(CODIGOS_SEED))
     ).scalars().all()
 
     for multiplex in multiplexes:

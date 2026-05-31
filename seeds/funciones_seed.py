@@ -12,6 +12,9 @@ from app.infrastructure.models.pelicula import Pelicula
 from app.infrastructure.models.multiplex_cartelera import (
     MultiplexCartelera
 )
+from app.infrastructure.models.multiplex import Multiplex
+
+CODIGOS_SEED = {"TIT", "UNI", "PLC", "GRE", "EMB", "AME"}
 
 
 HORARIOS_BASE = [
@@ -145,9 +148,14 @@ def run():
 
         try:
 
+            multiplex_ids = db.execute(
+                select(Multiplex.id).where(Multiplex.codigo.in_(CODIGOS_SEED))
+            ).scalars().all()
+
             salas = db.execute(
                 select(Sala).where(
-                    Sala.estaActiva == True
+                    Sala.estaActiva == True,
+                    Sala.multiplexId.in_(multiplex_ids),
                 )
             ).scalars().all()
 
