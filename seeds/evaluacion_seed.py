@@ -281,7 +281,7 @@ def run():
                     if not _ya_existe_boleta_pagada(db, cliente.id, funcion.id):
                         factura = _crear_compra_boleta(db, cliente, funcion)
                         if factura:
-                            cliente.puntosAcumulados += 10
+                            cliente.puntosAcumulados = min(100, cliente.puntosAcumulados + 10)
                             db.flush()
 
                     if not _ya_existe_evaluacion_pelicula(

@@ -16,9 +16,7 @@ CONFIG_DATA = [
     ("puntos_para_regalo", "100", "Puntos necesarios para boleta regalo", "int"),
     ("meses_vigencia_boleta_regalo", "6", "Meses de vigencia de la boleta regalo", "int"),
     
-    ("promo_snack_activa", "true", "Si la promoción de snacks está activa", "bool"),
-    ("promo_snack_porcentaje", "50", "Porcentaje de descuento en snacks con promo", "int"),
-    ("promo_snack_dias", "1,2", "Días de promo: 0=lunes, 1=martes, ..., 6=domingo", "str"),
+    ("promo_snack_activa", "false", "Si la promoción de snacks está activa", "bool"),
 ]
 
 

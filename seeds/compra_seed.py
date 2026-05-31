@@ -432,12 +432,9 @@ def run():
 
                 if estado_factura == EstadoFacturaEnum.PAGADA:
 
-                    cliente.puntosAcumulados += (
-                        cantidad_boletas * 10
-                    )
-
-                    cliente.puntosAcumulados += (
-                        cantidad_comidas * 5
+                    cliente.puntosAcumulados = min(
+                        100,
+                        cliente.puntosAcumulados + cantidad_boletas * 10 + cantidad_comidas * 5
                     )
 
                 count += 1
