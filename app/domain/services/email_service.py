@@ -61,12 +61,8 @@ CinePacho
         html = f"""
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;border:1px solid #ddd;border-radius:8px;">
             <div style="text-align:center;color:#e50914;font-size:24px;font-weight:bold;margin-bottom:20px;">CINE PACHO</div>
-            <p>Tu compra está casi lista. Para confirmar el pago haz clic aquí:</p>
-            <center>
-                <a href="{link_confirmacion}" style="display:inline-block;padding:10px 20px;background-color:#e50914;color:white;text-decoration:none;border-radius:5px;margin-top:20px;">
-                    Confirmar pago
-                </a>
-            </center>
+            <p>Tu compra está casi lista. Para confirmar el pago copia y abre este enlace:</p>
+            <p style="word-break:break-all;background:#f5f5f5;padding:12px;border-radius:4px;font-size:13px;">{link_confirmacion}</p>
             <p style="margin-top:20px;color:#777;font-size:13px;">
                 IMPORTANTE: Este enlace expira en 10 minutos.<br>
                 Si no realizaste esta compra, ignora este correo.
@@ -98,12 +94,8 @@ CinePacho
         html = f"""
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;border:1px solid #ddd;border-radius:8px;">
             <div style="text-align:center;color:#e50914;font-size:24px;font-weight:bold;margin-bottom:20px;">CINE PACHO</div>
-            <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta.</p>
-            <center>
-                <a href="{link_reset}" style="display:inline-block;padding:10px 20px;background-color:#e50914;color:white;text-decoration:none;border-radius:5px;margin-top:20px;">
-                    Restablecer contraseña
-                </a>
-            </center>
+            <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta. Copia y abre este enlace:</p>
+            <p style="word-break:break-all;background:#f5f5f5;padding:12px;border-radius:4px;font-size:13px;">{link_reset}</p>
             <p style="margin-top:20px;color:#777;font-size:13px;">
                 IMPORTANTE: Este enlace expira en 15 minutos.<br>
                 Si no solicitaste el cambio de contraseña, ignora este correo.

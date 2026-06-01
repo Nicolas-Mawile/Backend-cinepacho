@@ -20,11 +20,7 @@ def enviar_bienvenida(nombre: str, correo: str):
             <p>Hola <strong>{nombre}</strong>,</p>
             <p>¡Gracias por unirte a Cine Pacho! Estamos emocionados de tenerte con nosotros.</p>
             <p>Ya puedes empezar a disfrutar de la mejor cartelera y acumular puntos en cada visita.</p>
-            <center>
-                <a href="{settings.frontend_url}" style="display:inline-block;padding:10px 20px;background-color:#e50914;color:white;text-decoration:none;border-radius:5px;margin-top:20px;">
-                    Ir a la aplicación
-                </a>
-            </center>
+            <p style="word-break:break-all;background:#f5f5f5;padding:12px;border-radius:4px;font-size:13px;">{settings.frontend_url}</p>
         </div>
         <div style="margin-top:30px;text-align:center;font-size:12px;color:#777;">&copy; 2026 Cine Pacho. Todos los derechos reservados.</div>
     </div>
