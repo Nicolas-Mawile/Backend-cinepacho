@@ -21,35 +21,35 @@ class EmailService:
 
     def _enviar(self, mensaje, destinatario):
 
+        print("===== EMAIL DEBUG =====")
+        print(f"SMTP_SERVER  : {settings.smtp_server}")
+        print(f"SMTP_PORT    : {settings.smtp_port}")
+        print(f"SMTP_USER    : {settings.smtp_user}")
+        print(f"SMTP_PASSWORD: {'SET' if settings.smtp_password else 'NOT SET'}")
+        print(f"TO           : {destinatario}")
+
+        if not self._smtp_disponible():
+            print("ERROR: Configuración SMTP incompleta — no se envía correo")
+            return
+
         try:
-
-            print("===== ENVIANDO EMAIL =====")
-            print("TO:", destinatario)
-
+            print("[1] Conectando a SMTP...")
             servidor = smtplib.SMTP(
                 settings.smtp_server,
                 settings.smtp_port,
                 timeout=15
             )
-
-            servidor.set_debuglevel(1)
-
+            print("[2] Conexión OK — iniciando STARTTLS...")
             servidor.starttls()
-
-            servidor.login(
-                settings.smtp_user,
-                settings.smtp_password
-            )
-
+            print("[3] STARTTLS OK — haciendo login...")
+            servidor.login(settings.smtp_user, settings.smtp_password)
+            print("[4] Login OK — enviando mensaje...")
             servidor.send_message(mensaje)
-
             servidor.quit()
-
-            print("EMAIL ENVIADO")
+            print("[5] EMAIL ENVIADO OK")
 
         except Exception as e:
-
-            print("ERROR SMTP:", repr(e))
+            print(f"ERROR SMTP en paso: {repr(e)}")
             raise
 
     # =========================================================
