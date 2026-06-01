@@ -1,7 +1,7 @@
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import select
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from jose import jwt, JWTError
@@ -198,7 +198,7 @@ def me(user=Depends(get_current_user), db: Session = Depends(get_db)):
     }
 
 @router.post("/solicitar-reset")
-def solicitar_reset(datos: SolicitarResetRequest, db: Session = Depends(get_db)):
+def solicitar_reset(datos: SolicitarResetRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """Genera un token de reset y envía el link por correo."""
     usuario = UsuarioRepository(db).buscarPorCorreo(datos.correo)
 
@@ -222,7 +222,8 @@ def solicitar_reset(datos: SolicitarResetRequest, db: Session = Depends(get_db))
     print(link_reset)
     print("===========================================\n")
 
-    EmailService().enviar_reset_password(
+    background_tasks.add_task(
+        EmailService().enviar_reset_password,
         destinatario=usuario.correo,
         link_reset=link_reset,
     )

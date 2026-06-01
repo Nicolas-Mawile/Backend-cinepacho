@@ -28,7 +28,8 @@ class EmailService:
 
             servidor = smtplib.SMTP(
                 settings.smtp_server,
-                settings.smtp_port
+                settings.smtp_port,
+                timeout=15
             )
 
             servidor.set_debuglevel(1)
