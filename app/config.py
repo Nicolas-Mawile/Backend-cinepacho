@@ -1,5 +1,6 @@
 """Application settings using pydantic-settings."""
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 from typing import Optional
@@ -85,6 +86,11 @@ class Settings(BaseSettings):
     frontend_url: str = (
         "http://localhost:5173"
     )
+
+    @field_validator('frontend_url', 'backend_url', 'email_from', mode='before')
+    @classmethod
+    def strip_strings(cls, v):
+        return v.strip() if isinstance(v, str) else v
 
     # ==========================================
     # CONFIG
