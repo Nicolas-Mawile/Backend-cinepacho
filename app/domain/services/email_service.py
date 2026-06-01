@@ -1,32 +1,41 @@
-"""Email service — notificaciones de CinePacho via Resend."""
+"""Email service — notificaciones de CinePacho via Brevo."""
 import logging
-import resend
+import requests
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+BREVO_URL = "https://api.brevo.com/v3/smtp/email"
 
 
 class EmailService:
 
     def _enviar(self, to: str, subject: str, html: str, text: str):
-        if not settings.resend_api_key:
-            print("ERROR: RESEND_API_KEY no configurada — no se envía correo")
+        if not settings.brevo_api_key:
+            print("ERROR: BREVO_API_KEY no configurada — no se envía correo")
             return
-
-        resend.api_key = settings.resend_api_key
 
         try:
             print(f"[EMAIL] Enviando a {to} — {subject}")
-            resend.Emails.send({
-                "from": settings.email_from,
-                "to": [to],
-                "subject": subject,
-                "html": html,
-                "text": text,
-            })
+            response = requests.post(
+                BREVO_URL,
+                headers={
+                    "api-key": settings.brevo_api_key,
+                    "content-type": "application/json",
+                },
+                json={
+                    "sender": {"name": "Cine Pacho", "email": settings.email_from},
+                    "to": [{"email": to}],
+                    "subject": subject,
+                    "htmlContent": html,
+                    "textContent": text,
+                },
+                timeout=15,
+            )
+            response.raise_for_status()
             print(f"[EMAIL] OK — correo enviado a {to}")
         except Exception as e:
-            print(f"[EMAIL] ERROR Resend: {repr(e)}")
+            print(f"[EMAIL] ERROR Brevo: {repr(e)}")
             raise
 
     # =========================================================

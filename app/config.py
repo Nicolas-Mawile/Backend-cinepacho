@@ -62,12 +62,12 @@ class Settings(BaseSettings):
     smtp_password: Optional[str] = None
 
     # ==========================================
-    # RESEND (email HTTP API)
+    # BREVO (email HTTP API)
     # ==========================================
 
-    resend_api_key: Optional[str] = None
+    brevo_api_key: Optional[str] = None
 
-    email_from: str = "Cine Pacho <onboarding@resend.dev>"
+    email_from: str = "nicolascr333@gmail.com"
 
     # ==========================================
     # BACKEND URL
