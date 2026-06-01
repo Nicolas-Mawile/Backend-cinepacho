@@ -29,6 +29,8 @@ class EmailService:
                     "subject": subject,
                     "htmlContent": html,
                     "textContent": text,
+                    "trackClicks": False,
+                    "trackOpens": False,
                 },
                 timeout=15,
             )

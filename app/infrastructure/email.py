@@ -43,6 +43,8 @@ def enviar_bienvenida(nombre: str, correo: str):
                 "subject": f"¡Bienvenido a Cine Pacho, {nombre}!",
                 "htmlContent": html_content,
                 "textContent": f"Hola {nombre}, ¡bienvenido a Cine Pacho! Visítanos en {settings.frontend_url}",
+                "trackClicks": False,
+                "trackOpens": False,
             },
             timeout=15,
         )
