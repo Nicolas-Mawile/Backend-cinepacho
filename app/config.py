@@ -62,6 +62,14 @@ class Settings(BaseSettings):
     smtp_password: Optional[str] = None
 
     # ==========================================
+    # RESEND (email HTTP API)
+    # ==========================================
+
+    resend_api_key: Optional[str] = None
+
+    email_from: str = "Cine Pacho <onboarding@resend.dev>"
+
+    # ==========================================
     # BACKEND URL
     # ==========================================
 
