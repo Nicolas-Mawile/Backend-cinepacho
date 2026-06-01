@@ -73,7 +73,7 @@ def enviar_bienvenida(nombre: str, correo: str):
                 <p>¡Gracias por unirte a Cine Pacho! Estamos emocionados de tenerte con nosotros.</p>
                 <p>Ya puedes empezar a disfrutar de la mejor cartelera y acumular puntos en cada visita.</p>
                 <center>
-                    <a href="http://localhost:5173" class="button" style="color: white;">Ir a la aplicación</a>
+                    <a href="{settings.frontend_url}" class="button" style="color: white;">Ir a la aplicación</a>
                 </center>
             </div>
             <div class="footer">
@@ -83,7 +83,7 @@ def enviar_bienvenida(nombre: str, correo: str):
     </body>
     </html>
     """
-    msg.set_content(f"Hola {nombre}, ¡bienvenido a Cine Pacho! Visítanos en http://localhost:5173")
+    msg.set_content(f"Hola {nombre}, ¡bienvenido a Cine Pacho! Visítanos en {settings.frontend_url}")
     msg.add_alternative(html_content, subtype='html')
 
     try:
